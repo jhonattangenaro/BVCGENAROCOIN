@@ -22,7 +22,7 @@ app = Flask(__name__)
 # ========== CONFIGURACIÓN ==========
 app.secret_key = 'tu_clave_secreta_para_sesiones'
 ADMIN_USER = "admin"
-ADMIN_PASS = "12345"
+ADMIN_PASS = "Barcelona2026."
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "database", "bolsa_datos.db")
@@ -1007,4 +1007,4 @@ def admin_cargar_masivo():
 
 if __name__ == '__main__':
     os.makedirs(DATA_DIR, exist_ok=True)
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=0.0.0.0)
