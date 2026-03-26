@@ -1005,6 +1005,8 @@ def admin_cargar_masivo():
                 errores.append(archivo.filename)
     return jsonify({"status": "ok", "procesados": procesados, "errores": errores})
 
-if __name__ == '__main__':
-    os.makedirs(DATA_DIR, exist_ok=True)
-    app.run(debug=True, port=0.0.0.0)
+if __name__ == "__main__":
+    import os
+    # Render asigna el puerto automáticamente, por eso usamos os.environ
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
