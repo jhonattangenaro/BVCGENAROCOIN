@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 md:p-8 transition-colors duration-500">
+    
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
+        <div>
+            <h1 class="text-3xl font-black uppercase italic text-slate-800 dark:text-white tracking-tighter">
+                📊 Panel de <span class="text-blue-600">Mercado</span>
+            </h1>
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em] mt-1">Bolsa de Valores de Caracas - Local</p>
+        </div>
+
+        <div class="flex items-center gap-4 bg-white dark:bg-slate-800 p-2 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700">
+            <span class="text-[10px] font-black uppercase text-slate-400 ml-2">Sesión:</span>
+            <form action="/" method="GET">
+                <select name="fecha" onchange="this.form.submit()" 
+                    class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-white p-2 px-4 rounded-xl font-bold outline-none border-none cursor-pointer hover:bg-blue-600 hover:text-white transition-all">
+                    {% for f in lista_fechas %}
+                    <option value="{{f}}" {% if f==fecha_actual %}selected{% endif %}>{{f}}</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white dark:bg-slate-800 p-6 rounded-[2rem] shadow-xl border-b-4 border-green-500 flex justify-between items-center">
+            <div>
+                <p class="text-[10px] font-black uppercase text-slate-500 mb-1">Acciones que Suben</p>
+                <h3 class="text-3xl font-black text-green-600">{{ estadisticas.suben }}</h3>
+            </div>
+            <i class="fa-solid fa-arrow-trend-up text-3xl text-green-100 dark:text-green-900/30"></i>
+        </div>
+        <div class="bg-white dark:bg-slate-800 p-6 rounded-[2rem] shadow-xl border-b-4 border-red-500 flex justify-between items-center">
+            <div>
+                <p class="text-[10px] font-black uppercase text-slate-500 mb-1">Acciones que Bajan</p>
+                <h3 class="text-3xl font-black text-red-600">{{ estadisticas.bajan }}</h3>
+            </div>
+            <i class="fa-solid fa-arrow-trend-down text-3xl text-red-100 dark:text-red-900/30"></i>
+        </div>
+        <div class="bg-white dark:bg-slate-800 p-6 rounded-[2rem] shadow-xl border-b-4 border-blue-500 flex justify-between items-center">
+            <div>
+                <p class="text-[10px] font-black uppercase text-slate-500 mb-1">Sin Variación</p>
+                <h3 class="text-3xl font-black text-blue-600">{{ estadisticas.estables }}</h3>
+            </div>
+            <i class="fa-solid fa-equals text-3xl text-blue-100 dark:text-blue-900/30"></i>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        {% for acc in acciones %}
+        <a href="/consulta?simbolo={{ acc.simbolo }}" 
+           class="group bg-white dark:bg-slate-800 p-5 rounded-[2rem] shadow-md border border-slate-100 dark:border-slate-700 hover:scale-[1.03] hover:shadow-2xl transition-all duration-300">
+            
+            <div class="flex justify-between items-start mb-4">
+                <div class="w-12 h-12 bg-slate-100 dark:bg-slate-900 rounded-2xl flex items-center justify-center overflow-hidden border border-slate-200 dark:border-slate-700">
+                    {% if tiene_imagen(acc.simbolo) %}
+                        <img src="{{ url_for('static', filename='img/acciones/' + acc.simbolo + '.png') }}" class="w-full h-full object-contain p-2">
+                    {% else %}
+                        <span class="text-xs font-black text-slate-400">{{ acc.simbolo[:2] }}</span>
+                    {% endif %}
+                </div>
+                
+                <div class="text-right">
+                    <span class="text-lg font-black dark:text-white tracking-tighter">{{ acc.simbolo }}</span>
+                    <p class="text-[9px] font-bold text-slate-400 uppercase">
+                        {% if acc.nombre %}
+                            {{ acc.nombre[:15] }}{% if acc.nombre|length > 15 %}...{% endif %}
+                        {% else %}
+                            EMPRESA BVC
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-end">
+                <div>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cierre</p>
+                    <p class="text-lg font-mono font-black dark:text-white">{{ format_spanish(acc.cierre) }}</p>
+                </div>
+                
+                <div class="text-right">
+                    <p class="text-[10px] font-black uppercase mb-1 {% if acc.variacion > 0 %}text-green-500{% elif acc.variacion < 0 %}text-red-500{% else %}text-slate-400{% endif %}">
+                        {{ "▲" if acc.variacion > 0 else "▼" if acc.variacion < 0 else "●" }} 
+                        {{ format_spanish(acc.variacion) }}%
+                    </p>
+                    <div class="h-1 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div class="h-full {% if acc.variacion > 0 %}bg-green-500{% elif acc.variacion < 0 %}bg-red-500{% else %}bg-slate-400{% endif %}" 
+                             style="width: {{ acc.variacion|abs if acc.variacion|abs <= 100 else 100 }}%"></div>
+                    </div>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+
+    <div class="max-w-7xl mx-auto mt-12 p-6 bg-slate-100 dark:bg-slate-800/50 rounded-[2rem] border border-dashed border-slate-300 dark:border-slate-700">
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left">
+            <div>
+                <p class="text-xs font-black text-slate-500 uppercase tracking-widest">Información de la terminal</p>
+                <p class="text-[10px] text-slate-400 mt-1 italic font-mono uppercase tracking-tighter">
+                    Mostrando {{ acciones|length }} instrumentos activos para la fecha {{ fecha_actual }}
+                </p>
+            </div>
+            <div class="flex gap-4">
+                <div class="px-4 py-2 bg-white dark:bg-slate-900 rounded-xl shadow-sm">
+                    <span class="text-[10px] font-black text-slate-500 uppercase">Status: </span>
+                    <span class="text-[10px] font-black text-green-500">CONECTADO</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    console.log("Terminal Index Cargado - Registros: {{ acciones|length }}");
+</script>
+{% endblock %}

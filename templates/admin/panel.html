@@ -1,0 +1,653 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-50 dark:bg-[#0f172a] p-4 md:p-8 text-slate-800 dark:text-slate-300 transition-colors duration-500">
+    
+    <!-- ══════════════════════════════════════════════════════════
+         HEADER (sin cambios)
+         ══════════════════════════════════════════════════════════ -->
+    <div class="max-w-[95%] mx-auto flex flex-col md:flex-row justify-between items-end gap-6 mb-8">
+        <div>
+            <div class="flex items-center gap-3 mb-2">
+                <span class="w-3 h-3 bg-blue-600 rounded-full animate-pulse"></span>
+                <h1 class="text-3xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white">Data <span class="text-blue-600">Entry</span> Console</h1>
+            </div>
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em]">Gestión de Mercado y Edición de Registros</p>
+        </div>
+
+        <div class="flex flex-wrap bg-white dark:bg-slate-900/50 backdrop-blur border border-slate-200 dark:border-slate-800 p-4 rounded-3xl gap-4 items-center shadow-sm">
+            <div>
+                <label class="block text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase mb-1">Fecha de Sesión</label>
+                <input type="date" id="fecha_global" value="{{ current_date }}" onchange="onFechaChange()"
+                    class="bg-transparent text-slate-900 dark:text-white font-mono text-sm outline-none border-b border-slate-300 dark:border-slate-700 focus:border-blue-600 transition-all">
+            </div>
+            <div class="h-8 w-px bg-slate-200 dark:bg-slate-800 hidden md:block"></div>
+            
+            <button onclick="cargarPlantilla()" class="px-5 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all">
+                📋 Plantilla Tickers
+            </button>
+
+            <button onclick="enviarTodo()" class="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-600/20">
+                🚀 Sincronizar Mercado
+            </button>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         SECCIÓN: ÍNDICES & DÓLAR  ← NUEVO
+         ══════════════════════════════════════════════════════════ -->
+    <div class="max-w-[95%] mx-auto mb-10">
+        <!-- Título sección -->
+        <div class="flex items-center gap-3 mb-5">
+            <div class="w-2 h-8 bg-blue-600 rounded-full"></div>
+            <h2 class="text-xl font-black uppercase italic text-slate-800 dark:text-white tracking-tight">Índices & Dólar BCV</h2>
+            <span class="text-[9px] bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full font-black uppercase">Datos para /indices</span>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <!-- ── CARD: DÓLAR BCV ── -->
+            <div class="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl overflow-visible">
+                <!-- Header card -->
+                <div class="bg-gradient-to-r from-blue-600 to-blue-700 p-5 flex items-center justify-between rounded-t-[2.5rem]">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-white/15 rounded-2xl flex items-center justify-center">
+                            <i class="fas fa-dollar-sign text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-black text-white uppercase tracking-tight">Dólar BCV</h3>
+                            <p class="text-[9px] text-blue-200 font-bold uppercase">Precio en Bolívares</p>
+                        </div>
+                    </div>
+                    <span id="dolar-ultimo-precio" class="text-2xl font-black text-white">--</span>
+                </div>
+
+                <!-- Inputs -->
+                <div class="p-5 space-y-4">
+                    <div class="flex gap-3 items-end">
+                        <div class="flex-1">
+                            <label class="block text-[9px] font-black text-slate-500 uppercase mb-1.5">Fecha</label>
+                            <div class="bg-slate-100 dark:bg-slate-800 rounded-xl px-3 py-2.5 text-sm font-mono text-slate-600 dark:text-slate-300" id="dolar-fecha-display">{{ current_date }}</div>
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase mb-1.5">Precio $ (Bs)</label>
+                            <input type="number" id="input-dolar" step="0.0001" placeholder="Ej: 72.45"
+                                class="input-cell w-full text-blue-600 dark:text-blue-400 font-black text-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="guardarDolar()" class="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-md shadow-blue-600/20">
+                            💾 Guardar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Historial último 5 -->
+                <div class="border-t border-slate-100 dark:border-slate-800">
+                    <div class="px-5 py-2.5 bg-slate-50/60 dark:bg-slate-950/30 flex justify-between items-center">
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Historial Reciente</p>
+                        <button onclick="refrescarHistorialDolar()" class="text-[9px] text-slate-400 hover:text-blue-600 font-black uppercase">🔄</button>
+                    </div>
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="text-[9px] font-black text-slate-400 uppercase border-b border-slate-100 dark:border-slate-800">
+                                <th class="px-5 py-2">Fecha</th>
+                                <th class="px-5 py-2 text-right">Valor (Bs)</th>
+                                <th class="px-5 py-2 w-10"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-historial-dolar">
+                            <tr><td colspan="3" class="px-5 py-4 text-center text-slate-400 text-[10px] italic">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ── CARD: IBC → tabla indices ── -->
+            <div class="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl overflow-visible">
+                <!-- Header -->
+                <div class="bg-gradient-to-r from-green-600 to-emerald-600 p-5 flex items-center justify-between rounded-t-[2.5rem]">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-white/15 rounded-2xl flex items-center justify-center">
+                            <i class="fas fa-chart-line text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-black text-white uppercase tracking-tight">Índice IBC</h3>
+                            <p class="text-[9px] text-green-200 font-bold uppercase">tabla · indices</p>
+                        </div>
+                    </div>
+                    <span id="ibc-ultimo-precio" class="text-2xl font-black text-white">--</span>
+                </div>
+
+                <!-- Inputs -->
+                <div class="p-5 space-y-4">
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-[9px] font-black text-slate-500 uppercase mb-1.5">Fecha</label>
+                            <div class="bg-slate-100 dark:bg-slate-800 rounded-xl px-3 py-2.5 text-sm font-mono text-slate-600 dark:text-slate-300" id="ibc-fecha-display">{{ current_date }}</div>
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-black text-green-600 dark:text-green-400 uppercase mb-1.5">Valor IBC</label>
+                            <input type="number" id="input-ibc" step="0.01" placeholder="Ej: 6013.52"
+                                class="input-cell w-full text-green-600 dark:text-green-400 font-black text-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-black text-slate-500 uppercase mb-1.5">Variación (pts)</label>
+                            <input type="number" id="input-ibc-var" step="0.01" placeholder="Ej: 166.14"
+                                class="input-cell w-full text-slate-600 dark:text-slate-400 font-black text-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="guardarIBCIndices()" class="flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-md shadow-green-600/20">
+                            💾 Guardar en tabla indices
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Historial tabla indices (últimos 15) -->
+                <div class="border-t border-slate-100 dark:border-slate-800">
+                    <div class="px-5 py-2.5 bg-slate-50/60 dark:bg-slate-950/30 flex justify-between items-center">
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Historial · tabla indices</p>
+                        <button onclick="refrescarHistorialIndices()" class="text-[9px] text-slate-400 hover:text-green-600 font-black uppercase">🔄</button>
+                    </div>
+                    <div class="overflow-x-auto max-h-64 overflow-y-auto">
+                        <table class="w-full text-left">
+                            <thead class="sticky top-0 bg-white dark:bg-slate-900">
+                                <tr class="text-[9px] font-black text-slate-400 uppercase border-b border-slate-100 dark:border-slate-800">
+                                    <th class="px-4 py-2">Fecha</th>
+                                    <th class="px-4 py-2 text-right">IBC</th>
+                                    <th class="px-4 py-2 text-right">Var (pts)</th>
+                                    <th class="px-4 py-2">Fuente</th>
+                                    <th class="px-4 py-2 w-8"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-historial-indices">
+                                <tr><td colspan="5" class="px-4 py-4 text-center text-slate-400 text-[10px] italic">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- end grid -->
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         TABLA MERCADO (sin cambios)
+         ══════════════════════════════════════════════════════════ -->
+    <div class="max-w-[95%] mx-auto overflow-hidden rounded-[2.5rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/30 shadow-xl mb-12">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse" id="tabla-carga">
+                <thead>
+                    <tr class="bg-slate-50 dark:bg-slate-950/50 text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                        <th class="p-4 w-12">MODO</th>
+                        <th class="p-4">Ticker</th>
+                        <th class="p-4">Apertura</th>
+                        <th class="p-4">Máximo</th>
+                        <th class="p-4">Mínimo</th>
+                        <th class="p-4">Cierre</th>
+                        <th class="p-4 text-blue-600 dark:text-blue-400">Efectivo (Pos. 12)</th>
+                        <th class="p-4 w-10"></th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpo-tabla">
+                    <tr class="fila-dato border-b border-slate-100 dark:border-slate-800/50 hover:bg-blue-500/5">
+                        <td class="p-4 text-[9px] font-black text-slate-400">NUEVO</td>
+                        <td class="p-2"><input type="text" placeholder="TICKER" class="input-cell uppercase w-24 font-bold"></td>
+                        <td class="p-2"><input type="number" step="0.00000001" placeholder="0.00" class="input-cell w-32"></td>
+                        <td class="p-2"><input type="number" step="0.00000001" placeholder="0.00" class="input-cell w-32"></td>
+                        <td class="p-2"><input type="number" step="0.00000001" placeholder="0.00" class="input-cell w-32"></td>
+                        <td class="p-2"><input type="number" step="0.00000001" placeholder="0.00" class="input-cell w-32"></td>
+                        <td class="p-2"><input type="number" step="0.01" placeholder="0.00" class="input-cell w-40 text-blue-600 dark:text-blue-400 font-bold"></td>
+                        <td class="p-2"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="p-4 bg-slate-50/50 dark:bg-slate-950/20 text-center">
+            <button onclick="agregarFila()" class="text-[10px] font-black uppercase text-slate-500 hover:text-blue-600">+ Añadir Fila Manual</button>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         REGISTROS GUARDADOS (sin cambios)
+         ══════════════════════════════════════════════════════════ -->
+    <div class="max-w-[95%] mx-auto">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-2 h-8 bg-amber-500 rounded-full"></div>
+            <h2 class="text-xl font-black uppercase italic text-slate-800 dark:text-white tracking-tight">Registros Guardados</h2>
+            <button onclick="cargarRegistrosExistentes()" class="ml-4 text-[9px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-xl font-black uppercase hover:bg-blue-600 hover:text-white transition-all shadow-sm">
+                🔄 Refrescar Lista
+            </button>
+        </div>
+
+        <div class="bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xl">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-100 dark:bg-slate-950/50 text-[10px] font-black uppercase text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                        <th class="p-4">Ticker / Empresa</th>
+                        <th class="p-4">Cierre</th>
+                        <th class="p-4">Efectivo</th>
+                        <th class="p-4 text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-edicion">
+                    <tr><td colspan="4" class="p-10 text-center text-slate-400 text-xs font-bold uppercase tracking-widest italic">Cargando datos...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════
+         GESTIÓN DE USUARIOS
+         ══════════════════════════════════════════════════════════ -->
+    <div class="max-w-[95%] mx-auto mt-14">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="w-2 h-8 bg-purple-600 rounded-full"></div>
+            <h2 class="text-xl font-black uppercase italic text-slate-800 dark:text-white tracking-tight">Gestión de Usuarios</h2>
+            <span class="text-[9px] bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-3 py-1 rounded-full font-black uppercase">{{ usuarios|length }} registrado(s)</span>
+        </div>
+
+        {% if usuarios %}
+        <div class="space-y-4">
+            {% for u in usuarios %}
+            <div id="user-card-{{ u.id }}" class="bg-white dark:bg-slate-900/50 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-md overflow-hidden">
+                <!-- Header del usuario -->
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-5 border-b border-slate-100 dark:border-slate-800">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-white text-lg shadow
+                            {% if u.activo %}bg-purple-600{% else %}bg-slate-400{% endif %}">
+                            {{ u.username[0]|upper }}
+                        </div>
+                        <div>
+                            <p class="font-black text-slate-800 dark:text-white text-lg">{{ u.username }}</p>
+                            <p class="text-[10px] text-slate-400 font-bold uppercase">{{ u.email or 'Sin email' }} · Registro: {{ u.fecha_registro[:10] }}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span id="badge-activo-{{ u.id }}"
+                            class="text-[9px] font-black px-3 py-1 rounded-full uppercase {% if u.activo %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}">
+                            {% if u.activo %}✓ Activo{% else %}✕ Suspendido{% endif %}
+                        </span>
+                        <button onclick="toggleUsuario({{ u.id }})"
+                            class="text-[9px] px-3 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-xl font-black uppercase hover:bg-amber-100 hover:text-amber-700 transition-all">
+                            Cambiar Estado
+                        </button>
+                        <button onclick="eliminarUsuario({{ u.id }}, '{{ u.username }}')"
+                            class="text-[9px] px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-xl font-black uppercase hover:bg-red-100 transition-all">
+                            Eliminar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Permisos -->
+                <div class="p-5">
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Permisos de Acceso</p>
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-4" id="permisos-{{ u.id }}">
+                        {% for key, label in permisos_disponibles.items() %}
+                        {% set activo = key in (u.permisos.split(',') if u.permisos else []) %}
+                        <label class="flex items-center gap-2 cursor-pointer group">
+                            <input type="checkbox"
+                                class="permiso-check-{{ u.id }} w-4 h-4 accent-purple-600 cursor-pointer"
+                                value="{{ key }}"
+                                {% if activo %}checked{% endif %}>
+                            <span class="text-[10px] font-bold text-slate-600 dark:text-slate-400 group-hover:text-purple-600 transition-colors leading-tight">{{ label }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <button onclick="guardarPermisos({{ u.id }})"
+                        class="px-5 py-2 bg-purple-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-purple-700 transition-all shadow-md shadow-purple-600/20">
+                        💾 Guardar Permisos
+                    </button>
+                    <span id="msg-{{ u.id }}" class="ml-3 text-[10px] font-black text-green-600 hidden">✅ Guardado</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-white dark:bg-slate-900/50 rounded-[2rem] border border-slate-200 dark:border-slate-800 p-12 text-center">
+            <i class="fa-solid fa-users text-4xl text-slate-300 dark:text-slate-600 mb-4"></i>
+            <p class="text-slate-400 font-black uppercase text-xs tracking-widest">No hay usuarios registrados aún.</p>
+            <a href="/registro" target="_blank" class="inline-block mt-4 px-5 py-2.5 bg-purple-600 text-white rounded-xl text-[10px] font-black uppercase">Ver página de Registro</a>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     ESTILOS (sin cambios)
+     ══════════════════════════════════════════════════════════════ -->
+<style>
+    .input-cell { border: 1px solid transparent; color: inherit; padding: 0.75rem; border-radius: 0.75rem; width: 100%; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; transition: all 0.2s; position: relative; z-index: 1; pointer-events: auto; }
+    #cuerpo-tabla .input-cell { background: transparent; }
+    .input-cell:focus { background: rgba(59, 130, 246, 0.05) !important; border-color: #3b82f6 !important; outline: none; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+    input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+</style>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SCRIPTS
+     ══════════════════════════════════════════════════════════════ -->
+<script>
+// ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── 
+// MERCADO  (exactamente igual que antes)
+// ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ──
+const TICKERS_BASE = ["PGR", "RST", "BNC", "MVZ.A", "MVZ.B", "ABC", "GNB", "IBV", "CRX", "FIV", "FVI.A", "FVI.B", "HUA", "LNV", "PTN"];
+
+document.addEventListener('DOMContentLoaded', () => {
+    cargarRegistrosExistentes();
+    refrescarHistorialDolar();
+    refrescarHistorialIBC();
+});
+
+// Cuando cambia la fecha global se refresca todo
+function onFechaChange() {
+    const fecha = document.getElementById('fecha_global').value;
+    document.getElementById('dolar-fecha-display').textContent = fecha;
+    document.getElementById('ibc-fecha-display').textContent   = fecha;
+    cargarRegistrosExistentes();
+    refrescarHistorialDolar();
+    refrescarHistorialIBC();
+}
+
+function agregarFila() {
+    const tbody = document.getElementById('cuerpo-tabla');
+    const tr = document.createElement('tr');
+    tr.className = "fila-dato border-b border-slate-100 dark:border-slate-800/50 hover:bg-blue-500/5";
+    tr.innerHTML = `
+        <td class="p-4 text-[9px] font-black text-slate-400">NUEVO</td>
+        <td class="p-2"><input type="text" class="input-cell uppercase w-24 font-bold"></td>
+        <td class="p-2"><input type="number" step="0.00000001" class="input-cell w-32"></td>
+        <td class="p-2"><input type="number" step="0.00000001" class="input-cell w-32"></td>
+        <td class="p-2"><input type="number" step="0.00000001" class="input-cell w-32"></td>
+        <td class="p-2"><input type="number" step="0.00000001" class="input-cell w-32"></td>
+        <td class="p-2"><input type="number" step="0.01" class="input-cell w-40 text-blue-600 font-bold"></td>
+        <td class="p-2"><button onclick="this.closest('tr').remove()" class="text-red-400">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+}
+
+async function cargarRegistrosExistentes() {
+    const fecha = document.getElementById('fecha_global').value;
+    const tbody = document.getElementById('tabla-edicion');
+    tbody.innerHTML = '<tr><td colspan="4" class="p-10 text-center text-blue-500 font-bold animate-pulse">CONSULTANDO...</td></tr>';
+
+    try {
+        const response = await fetch(`/admin/obtener_registros/${fecha}`);
+        const datos = await response.json();
+        tbody.innerHTML = '';
+        
+        if (datos.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="p-10 text-center text-slate-400 text-[10px] font-black uppercase">Sin datos en esta fecha</td></tr>';
+            return;
+        }
+
+        datos.forEach(reg => {
+            const tr = document.createElement('tr');
+            tr.className = "border-b border-slate-100 dark:border-slate-800/50 hover:bg-amber-500/5 transition-all";
+            tr.innerHTML = `
+                <td class="p-4"><span class="font-black text-slate-800 dark:text-white">${reg.simbolo}</span><br><span class="text-[9px] text-slate-500 uppercase">${reg.nombre || 'Sin Nombre'}</span></td>
+                <td class="p-4 font-mono text-sm">${reg.cierre}</td>
+                <td class="p-4 font-mono text-sm text-blue-500">${reg.volumen}</td>
+                <td class="p-4 text-center">
+                    <button onclick="prepararEdicion('${reg.simbolo}', ${reg.apertura}, ${reg.maximo}, ${reg.minimo}, ${reg.cierre}, ${reg.volumen})" class="bg-amber-500 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase shadow-lg shadow-amber-500/20 mr-2">Editar</button>
+                    <button onclick="borrarRegistro('${reg.simbolo}')" class="bg-red-500 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase shadow-lg shadow-red-500/20">Borrar</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (e) { tbody.innerHTML = '<tr><td class="p-10 text-center text-red-500">Error de conexión</td></tr>'; }
+}
+
+function prepararEdicion(sim, ape, max, min, cie, vol) {
+    const tbody = document.getElementById('cuerpo-tabla');
+    tbody.innerHTML = `
+        <tr class="fila-dato border-b border-amber-500 bg-amber-500/10">
+            <td class="p-4 text-[9px] font-black text-amber-600">EDITANDO</td>
+            <td class="p-2"><input type="text" value="${sim}" class="input-cell uppercase w-24 font-bold text-amber-600" readonly></td>
+            <td class="p-2"><input type="number" step="0.00000001" value="${ape}" class="input-cell w-32"></td>
+            <td class="p-2"><input type="number" step="0.00000001" value="${max}" class="input-cell w-32"></td>
+            <td class="p-2"><input type="number" step="0.00000001" value="${min}" class="input-cell w-32"></td>
+            <td class="p-2"><input type="number" step="0.00000001" value="${cie}" class="input-cell w-32"></td>
+            <td class="p-2"><input type="number" step="0.01" value="${vol}" class="input-cell w-40 text-blue-600 font-bold"></td>
+            <td class="p-2"><button onclick="window.location.reload()" class="text-slate-400">✕</button></td>
+        </tr>
+    `;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function enviarTodo() {
+    const fecha = document.getElementById('fecha_global').value;
+    const filas = document.querySelectorAll('.fila-dato');
+    let data = [];
+    filas.forEach(f => {
+        const i = f.querySelectorAll('input');
+        if (i[0].value) data.push({ fecha, simbolo: i[0].value, apertura: i[1].value||0, maximo: i[2].value||0, minimo: i[3].value||0, cierre: i[4].value||0, volumen: i[5].value||0 });
+    });
+    if (data.length === 0) return;
+    const res = await fetch('/admin/guardar_masivo', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
+    if (res.ok) { alert("✅ Sincronizado"); window.location.reload(); }
+}
+
+async function borrarRegistro(simbolo) {
+    if(!confirm(`¿Eliminar ${simbolo}?`)) return;
+    const fecha = document.getElementById('fecha_global').value;
+    await fetch('/admin/eliminar_registro', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({fecha, simbolo}) });
+    cargarRegistrosExistentes();
+}
+
+// ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── 
+// DÓLAR BCV
+// ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ──
+
+async function guardarDolar() {
+    const fecha = document.getElementById('fecha_global').value;
+    const valor = document.getElementById('input-dolar').value;
+    if (!valor) { alert("Ingresa el precio del dólar"); return; }
+
+    const res = await fetch('/admin/guardar_dolar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fecha, valor: parseFloat(valor) })
+    });
+
+    if (res.ok) {
+        document.getElementById('input-dolar').value = '';
+        refrescarHistorialDolar();
+    } else {
+        alert("❌ Error al guardar");
+    }
+}
+
+async function refrescarHistorialDolar() {
+    const tbody = document.getElementById('tabla-historial-dolar');
+    try {
+        const res  = await fetch('/admin/obtener_historial_indices/dolar');
+        const rows = await res.json();
+
+        // Precio actual en el header de la card
+        if (rows.length > 0) {
+            document.getElementById('dolar-ultimo-precio').textContent = rows[0].valor.toLocaleString('es-VE', { minimumFractionDigits: 2 });
+        }
+
+        if (rows.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="px-5 py-3 text-center text-slate-400 text-[10px] italic">Sin registros</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = rows.map(r => `
+            <tr class="border-b border-slate-50 dark:border-slate-800/40 hover:bg-blue-500/5 transition-all">
+                <td class="px-5 py-2.5 text-[11px] font-mono text-slate-600 dark:text-slate-400">${r.fecha}</td>
+                <td class="px-5 py-2.5 text-[11px] font-black text-blue-600 dark:text-blue-400 text-right">${r.valor.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</td>
+                <td class="px-5 py-2.5 text-center">
+                    <button onclick="borrarIndice('dolar','${r.fecha}')" class="text-red-400 hover:text-red-600 text-[10px] font-black transition-colors">✕</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch(e) { console.error(e); }
+}
+
+// ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ──
+// IBC  →  tabla indices
+// ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ──
+
+async function guardarIBCIndices() {
+    const fecha     = document.getElementById('fecha_global').value;
+    const valor     = document.getElementById('input-ibc').value;
+    const variacion = document.getElementById('input-ibc-var').value || '0';
+    if (!valor) { alert("Ingresa el valor del IBC"); return; }
+
+    const btn = document.querySelector('[onclick="guardarIBCIndices()"]');
+    btn.innerHTML = '⏳ Guardando...';
+    btn.disabled  = true;
+
+    try {
+        const res = await fetch('/admin/guardar_indice_manual', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ fecha, valor: parseFloat(valor), variacion: parseFloat(variacion), fuente: 'manual' })
+        });
+        const data = await res.json();
+        if (data.status === 'ok') {
+            document.getElementById('input-ibc').value     = '';
+            document.getElementById('input-ibc-var').value = '';
+            refrescarHistorialIndices();
+            btn.innerHTML = '✅ Guardado';
+            setTimeout(() => { btn.innerHTML = '💾 Guardar en tabla indices'; btn.disabled = false; }, 1500);
+        } else {
+            alert("❌ Error: " + (data.message || 'desconocido'));
+            btn.innerHTML = '💾 Guardar en tabla indices';
+            btn.disabled  = false;
+        }
+    } catch(e) {
+        alert("❌ Error de red");
+        btn.innerHTML = '💾 Guardar en tabla indices';
+        btn.disabled  = false;
+    }
+}
+
+// Mantener guardarIBC por compatibilidad (llama al nuevo endpoint)
+async function guardarIBC() { guardarIBCIndices(); }
+
+async function refrescarHistorialIndices() {
+    const tbody = document.getElementById('tabla-historial-indices');
+    if (!tbody) return;
+    try {
+        const res  = await fetch('/admin/historial_indices?limit=15');
+        const rows = await res.json();
+
+        // Último valor en el header
+        if (rows.length > 0) {
+            document.getElementById('ibc-ultimo-precio').textContent =
+                rows[0].valor.toLocaleString('es-VE', { minimumFractionDigits: 2 });
+        }
+
+        if (rows.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-center text-slate-400 text-[10px] italic">Sin registros</td></tr>';
+            return;
+        }
+
+        const fuenteColor = { manual: 'text-purple-500', archivo_dat: 'text-blue-500', automatico: 'text-green-500' };
+
+        tbody.innerHTML = rows.map(r => {
+            const varSign = (r.variacion > 0) ? '+' : '';
+            const varColor = r.variacion > 0 ? 'text-green-600' : r.variacion < 0 ? 'text-red-500' : 'text-slate-400';
+            const fColor   = fuenteColor[r.fuente] || 'text-slate-400';
+            return `
+            <tr class="border-b border-slate-50 dark:border-slate-800/40 hover:bg-green-500/5 transition-all">
+                <td class="px-4 py-2 text-[11px] font-mono text-slate-600 dark:text-slate-400">${r.fecha}</td>
+                <td class="px-4 py-2 text-[11px] font-black text-green-600 dark:text-green-400 text-right">${r.valor.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</td>
+                <td class="px-4 py-2 text-[11px] font-black ${varColor} text-right">${r.variacion != null ? varSign + r.variacion.toFixed(2) : '--'}</td>
+                <td class="px-4 py-2 text-[9px] font-black uppercase ${fColor}">${r.fuente || '--'}</td>
+                <td class="px-4 py-2 text-center">
+                    <button onclick="borrarIndiceManual('${r.fecha}')" class="text-red-400 hover:text-red-600 text-[10px] font-black transition-colors">✕</button>
+                </td>
+            </tr>`;
+        }).join('');
+    } catch(e) { console.error('Error cargando historial indices:', e); }
+}
+
+// Alias para compatibilidad
+async function refrescarHistorialIBC() { refrescarHistorialIndices(); }
+
+async function borrarIndiceManual(fecha) {
+    if (!confirm(`¿Eliminar el registro del IBC para el ${fecha}?`)) return;
+    try {
+        const res = await fetch('/admin/eliminar_indice_manual', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fecha })
+        });
+        const data = await res.json();
+        if (data.status === 'ok') refrescarHistorialIndices();
+        else alert("❌ Error al eliminar");
+    } catch(e) { alert("❌ Error de red"); }
+}
+
+// ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ──
+// BORRAR índice dólar (tabla dolar_bcv / indicadores)
+// ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ──
+
+async function borrarIndice(tipo, fecha) {
+    if (!confirm(`¿Eliminar registro de ${tipo.toUpperCase()} del ${fecha}?`)) return;
+    await fetch('/admin/eliminar_indice', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tipo, fecha })
+    });
+    tipo === 'dolar' ? refrescarHistorialDolar() : refrescarHistorialIndices();
+}
+
+// ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ──
+// GESTIÓN DE USUARIOS
+// ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ── ──
+
+async function guardarPermisos(userId) {
+    const checks = document.querySelectorAll(`.permiso-check-${userId}:checked`);
+    const permisos = Array.from(checks).map(c => c.value);
+    const res = await fetch('/admin/usuarios/permisos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, permisos })
+    });
+    if (res.ok) {
+        const msg = document.getElementById(`msg-${userId}`);
+        msg.classList.remove('hidden');
+        setTimeout(() => msg.classList.add('hidden'), 2500);
+    }
+}
+
+async function toggleUsuario(userId) {
+    const res = await fetch('/admin/usuarios/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId })
+    });
+    if (res.ok) {
+        const data = await res.json();
+        const badge = document.getElementById(`badge-activo-${userId}`);
+        if (data.activo) {
+            badge.textContent = '✓ Activo';
+            badge.className = 'text-[9px] font-black px-3 py-1 rounded-full uppercase bg-green-100 text-green-700';
+        } else {
+            badge.textContent = '✕ Suspendido';
+            badge.className = 'text-[9px] font-black px-3 py-1 rounded-full uppercase bg-red-100 text-red-700';
+        }
+    }
+}
+
+async function eliminarUsuario(userId, username) {
+    if (!confirm(`¿Eliminar permanentemente al usuario "${username}"? Esta acción no se puede deshacer.`)) return;
+    const res = await fetch('/admin/usuarios/eliminar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId })
+    });
+    if (res.ok) {
+        const card = document.getElementById(`user-card-${userId}`);
+        card.style.transition = 'all 0.3s';
+        card.style.opacity = '0';
+        card.style.transform = 'scale(0.95)';
+        setTimeout(() => card.remove(), 300);
+    }
+}
+</script>
+{% endblock %}
