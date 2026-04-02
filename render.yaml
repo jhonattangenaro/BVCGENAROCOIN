@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: bvcgenarocoin
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+    disk:
+      name: bvc-data
+      mountPath: /opt/render/project/src/database
+      sizeGB: 1
