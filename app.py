@@ -304,8 +304,8 @@ def login():
             session['permisos'] = user['permisos'].split(',') if user['permisos'] else []
             return redirect(url_for('index'))
 
-        return render_template('login.html', error="Credenciales incorrectas")
-    return render_template('login.html')
+        return render_template('admin/login.html', error="Credenciales incorrectas")
+    return render_template('admin/login.html')
 
 @app.route('/registro', methods=['GET', 'POST'])
 def registro():
@@ -342,7 +342,7 @@ def admin_panel():
     conn = get_db()
     usuarios = [dict(u) for u in conn.execute("SELECT * FROM usuarios ORDER BY fecha_registro DESC").fetchall()]
     conn.close()
-    return render_template('panel.html',
+    return render_template('admin/panel.html',
                            current_date=datetime.now().strftime('%Y-%m-%d'),
                            usuarios=usuarios,
                            permisos_disponibles=PERMISOS_DISPONIBLES)
@@ -607,27 +607,24 @@ def api_indices_hoy():
         f = str(int(f))
         return f"{f[:4]}-{f[4:6]}-{f[6:]}" if len(f) == 8 else f
 
-    # ── IBC: último registro de tabla 'indices' (YYYYMMDD entero) ──
+    # ── IBC: último registro de tabla 'indicadores' ──
     conn = get_db()
     row_ibc = conn.execute(
-        "SELECT fecha, valor, variacion FROM indices WHERE valor > 0 ORDER BY fecha DESC LIMIT 1"
+        "SELECT fecha, ibc FROM indicadores WHERE ibc > 0 ORDER BY fecha DESC LIMIT 1"
     ).fetchone()
     row_ibc_prev = conn.execute(
-        "SELECT valor FROM indices WHERE valor > 0 ORDER BY fecha DESC LIMIT 1 OFFSET 1"
+        "SELECT ibc FROM indicadores WHERE ibc > 0 ORDER BY fecha DESC LIMIT 1 OFFSET 1"
     ).fetchone()
     conn.close()
 
-    if row_ibc and row_ibc['valor']:
-        resultado['fecha']      = fecha_int_a_str(row_ibc['fecha'])
-        resultado['ibc']        = round(row_ibc['valor'], 2)
+    if row_ibc and row_ibc['ibc']:
+        resultado['fecha']      = row_ibc['fecha']
+        resultado['ibc']        = round(row_ibc['ibc'], 2)
         resultado['fuente_ibc'] = 'db'
-        # Variación absoluta guardada en la tabla
-        var_abs = row_ibc['variacion'] if row_ibc['variacion'] is not None else 0
-        resultado['ibc_var'] = round(var_abs, 2)
-        # Variación porcentual calculada desde el registro anterior
-        if row_ibc_prev and row_ibc_prev['valor'] and row_ibc_prev['valor'] > 0:
+        resultado['ibc_var']    = 0
+        if row_ibc_prev and row_ibc_prev['ibc'] and row_ibc_prev['ibc'] > 0:
             resultado['ibc_var_pct'] = round(
-                (row_ibc['valor'] - row_ibc_prev['valor']) / row_ibc_prev['valor'] * 100, 2
+                (row_ibc['ibc'] - row_ibc_prev['ibc']) / row_ibc_prev['ibc'] * 100, 2
             )
         else:
             resultado['ibc_var_pct'] = 0.0
@@ -693,7 +690,7 @@ def api_comparativa_indices():
 
     conn = get_db()
     rows = conn.execute(
-        "SELECT fecha, valor FROM indices WHERE valor > 0 ORDER BY fecha ASC"
+        "SELECT fecha, ibc as valor FROM indicadores WHERE ibc > 0 ORDER BY fecha ASC"
     ).fetchall()
     dolar_rows = conn.execute(
         "SELECT fecha, dolar FROM indicadores WHERE dolar > 0 ORDER BY fecha ASC"
@@ -708,7 +705,7 @@ def api_comparativa_indices():
     valores_dolar = []
 
     for r in rows:
-        fecha_str = fecha_int_a_str(r['fecha'])
+        fecha_str = r['fecha']
         fechas.append(fecha_str)
         valores_ibc.append(round(r['valor'], 2))
         valores_dolar.append(dolar_bd.get(fecha_str) or dolar_xlsx.get(fecha_str) or None)
@@ -733,24 +730,17 @@ def admin_guardar_indice_manual():
     fuente    = data.get('fuente', 'manual')
     if not fecha_str or not valor:
         return jsonify({"status": "error", "message": "Fecha y valor son requeridos"}), 400
+    fecha_fmt = f"{fecha_str[:4]}-{fecha_str[4:6]}-{fecha_str[6:]}" if len(fecha_str)==8 else fecha_str
     conn = get_db()
     try:
-        existente = conn.execute(
-            "SELECT id FROM indices WHERE fecha = ?", (int(fecha_str),)
-        ).fetchone()
-        if existente:
-            conn.execute(
-                "UPDATE indices SET valor=?, variacion=?, fuente=?, created_at=datetime('now') WHERE fecha=?",
-                (valor, variacion, fuente, int(fecha_str))
-            )
-        else:
-            conn.execute(
-                "INSERT INTO indices (fecha, valor, variacion, fuente, created_at) VALUES (?,?,?,?,datetime('now'))",
-                (int(fecha_str), valor, variacion, fuente)
-            )
+        conn.execute("""
+            INSERT INTO indicadores (fecha, ibc, dolar)
+            VALUES (?, ?, 0)
+            ON CONFLICT(fecha) DO UPDATE SET ibc=excluded.ibc
+        """, (fecha_fmt, valor))
         conn.commit()
         conn.close()
-        return jsonify({"status": "ok", "fecha": fecha_str, "valor": valor})
+        return jsonify({"status": "ok", "fecha": fecha_fmt, "valor": valor})
     except Exception as e:
         conn.close()
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -761,8 +751,9 @@ def admin_eliminar_indice_manual():
     """Elimina un registro de la tabla indices por fecha"""
     data      = request.json
     fecha_str = str(data.get('fecha', '')).replace('-', '')
+    fecha_fmt = f"{fecha_str[:4]}-{fecha_str[4:6]}-{fecha_str[6:]}" if len(fecha_str)==8 else fecha_str
     conn      = get_db()
-    conn.execute("DELETE FROM indices WHERE fecha=?", (int(fecha_str),))
+    conn.execute("UPDATE indicadores SET ibc=0 WHERE fecha=?", (fecha_fmt,))
     conn.commit(); conn.close()
     return jsonify({"status": "ok"})
 
@@ -773,20 +764,15 @@ def admin_historial_indices():
     limit = request.args.get('limit', 15, type=int)
     conn  = get_db()
     rows  = conn.execute(
-        "SELECT id, fecha, valor, variacion, fuente, created_at FROM indices ORDER BY fecha DESC LIMIT ?",
+        "SELECT fecha, ibc as valor FROM indicadores WHERE ibc > 0 ORDER BY fecha DESC LIMIT ?",
         (limit,)
     ).fetchall()
     conn.close()
-    def fmt(f):
-        f = str(f)
-        return f"{f[:4]}-{f[4:6]}-{f[6:]}" if len(f) == 8 else f
     return jsonify([{
-        'id':         r['id'],
-        'fecha':      fmt(r['fecha']),
-        'valor':      r['valor'],
-        'variacion':  r['variacion'],
-        'fuente':     r['fuente'],
-        'created_at': r['created_at']
+        'fecha':     r['fecha'],
+        'valor':     r['valor'],
+        'variacion': 0,
+        'fuente':    'manual'
     } for r in rows])
 
 
