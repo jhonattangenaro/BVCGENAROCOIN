@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 md:p-8 transition-colors duration-500">
+    <div class="max-w-3xl mx-auto">
+
+        <!-- Header -->
+        <div class="flex items-center gap-4 mb-8">
+            <a href="/portafolio" class="w-10 h-10 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm">
+                <i class="fas fa-arrow-left text-slate-500"></i>
+            </a>
+            <div>
+                <h1 class="text-2xl font-black uppercase italic tracking-tighter text-slate-800 dark:text-white">
+                    Agregar <span class="text-purple-600">Inversión</span>
+                </h1>
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em]">Nueva transacción de compra</p>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for cat, msg in messages %}
+            <div class="mb-6 flex items-center gap-3 p-4 rounded-2xl text-xs font-bold
+                {% if cat == 'success' %}bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400
+                {% else %}bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400{% endif %}">
+                <i class="fas {% if cat == 'success' %}fa-circle-check{% else %}fa-circle-exclamation{% endif %} text-base"></i>
+                {{ msg }}
+            </div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <form method="POST" id="form-compra">
+            <div class="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden">
+
+                <!-- Acción & Fecha -->
+                <div class="p-6 border-b border-slate-100 dark:border-slate-700">
+                    <p class="text-[10px] font-black uppercase tracking-widest text-purple-600 dark:text-purple-400 mb-4">
+                        <i class="fas fa-search mr-1"></i> Seleccionar Acción
+                    </p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                        <!-- Selector de acción -->
+                        <div>
+                            <label class="block text-[9px] font-black text-slate-400 uppercase mb-1.5">Acción</label>
+                            <select name="accion_seleccionada" id="sel-accion" required onchange="onAccionChange()"
+                                class="w-full px-4 py-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold text-sm text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-purple-500 transition-all cursor-pointer">
+                                <option value="">-- Selecciona una acción --</option>
+                                {% for a in acciones_disponibles %}
+                                <option value="{{ a.s }} - {{ a.n }}"
+                                    data-precio="{{ a.precio }}"
+                                    data-simbolo="{{ a.s }}">
+                                    {{ a.s }} — {{ a.n }} (Bs. {{ "%.4f"|format(a.precio) }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Fecha de compra -->
+                        <div>
+                            <label class="block text-[9px] font-black text-slate-400 uppercase mb-1.5">Fecha de Compra</label>
+                            <input type="date" name="fecha_compra" id="fecha-compra" required
+                                value="{{ now().strftime('%Y-%m-%d') }}"
+                                class="w-full px-4 py-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl font-mono text-sm text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-purple-500 transition-all">
+                        </div>
+                    </div>
+
+                    <!-- Precio de referencia -->
+                    <div id="precio-ref-box" class="hidden mt-4 flex items-center gap-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-2xl px-4 py-3">
+                        <i class="fas fa-tag text-purple-500"></i>
+                        <span class="text-[11px] font-bold text-purple-700 dark:text-purple-300">
+                            Último precio de mercado: <strong id="precio-ref-label" class="text-base font-black">—</strong>
+                        </span>
+                        <button type="button" onclick="usarPrecioMercado()" class="ml-auto px-3 py-1.5 bg-purple-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-purple-700 transition-all">
+                            Usar este precio
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Cantidad & Precio -->
+                <div class="p-6 border-b border-slate-100 dark:border-slate-700">
+                    <p class="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-4">
+                        <i class="fas fa-calculator mr-1"></i> Datos de la Compra
+                    </p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[9px] font-black text-slate-400 uppercase mb-1.5">Cantidad de Títulos</label>
+                            <input type="number" name="cantidad" id="inp-cantidad" min="1" required placeholder="Ej: 1000" oninput="calcular()"
+                                class="w-full px-4 py-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl font-mono font-bold text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-black text-slate-400 uppercase mb-1.5">Precio de Compra (Bs. por título)</label>
+                            <input type="number" name="precio_compra" id="inp-precio" step="0.00000001" min="0" required placeholder="Ej: 12.50" oninput="calcular()"
+                                class="w-full px-4 py-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl font-mono font-bold text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Costos adicionales -->
+                <div class="p-6 border-b border-slate-100 dark:border-slate-700">
+                    <p class="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-4">
+                        <i class="fas fa-receipt mr-1"></i> Costos Adicionales
+                        <span class="ml-2 font-normal text-slate-400 normal-case tracking-normal">Opcionales · se suman al total</span>
+                    </p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-[9px] font-black text-slate-400 uppercase mb-1.5">Derecho de Registro (Bs.)</label>
+                            <input type="number" name="derecho_registro" id="inp-derecho" step="0.01" min="0" value="0" placeholder="0.00" oninput="calcular()"
+                                class="w-full px-4 py-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl font-mono text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-amber-500 transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-black text-slate-400 uppercase mb-1.5">Comisión del Corredor (Bs.)</label>
+                            <input type="number" name="comision" id="inp-comision" step="0.01" min="0" value="0" placeholder="0.00" oninput="calcular()"
+                                class="w-full px-4 py-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl font-mono text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-amber-500 transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-black text-slate-400 uppercase mb-1.5">IVA (Bs.)</label>
+                            <input type="number" name="iva" id="inp-iva" step="0.01" min="0" value="0" placeholder="0.00" oninput="calcular()"
+                                class="w-full px-4 py-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl font-mono text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-amber-500 transition-all">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resumen calculado (readonly) -->
+                <div class="p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+                    <p class="text-[10px] font-black uppercase tracking-widest text-green-600 dark:text-green-400 mb-4">
+                        <i class="fas fa-sigma mr-1"></i> Resumen Calculado
+                    </p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
+                            <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Monto Bruto</p>
+                            <p class="text-lg font-black font-mono text-slate-800 dark:text-white" id="show-bruto">Bs. 0.00</p>
+                            <p class="text-[9px] text-slate-400 mt-0.5">cantidad × precio</p>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
+                            <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Costos Adicionales</p>
+                            <p class="text-lg font-black font-mono text-amber-600 dark:text-amber-400" id="show-extras">Bs. 0.00</p>
+                            <p class="text-[9px] text-slate-400 mt-0.5">registro + comisión + IVA</p>
+                        </div>
+                        <div class="bg-green-50 dark:bg-green-900/20 rounded-2xl border border-green-300 dark:border-green-800 p-4">
+                            <p class="text-[9px] font-black text-green-600 dark:text-green-400 uppercase mb-1">Total a Pagar</p>
+                            <p class="text-xl font-black font-mono text-green-700 dark:text-green-300" id="show-total">Bs. 0.00</p>
+                            <p class="text-[9px] text-green-500 mt-0.5">bruto + costos</p>
+                        </div>
+                    </div>
+
+                    <!-- Campos hidden que se envían al servidor -->
+                    <input type="hidden" name="monto_bruto" id="hid-bruto">
+                    <input type="hidden" name="monto_total" id="hid-total">
+                </div>
+
+                <!-- Botones -->
+                <div class="p-6 flex flex-col sm:flex-row gap-3">
+                    <a href="/portafolio"
+                        class="flex-1 py-4 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center hover:bg-slate-200 dark:hover:bg-slate-600 transition-all">
+                        Cancelar
+                    </a>
+                    <button type="submit" id="btn-submit"
+                        class="flex-2 px-10 py-4 bg-purple-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-purple-700 active:scale-95 transition-all shadow-lg shadow-purple-600/20 flex items-center justify-center gap-2">
+                        <i class="fas fa-plus-circle"></i> Registrar Inversión
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let precioMercado = 0;
+
+function onAccionChange() {
+    const sel = document.getElementById('sel-accion');
+    const opt = sel.selectedOptions[0];
+    precioMercado = parseFloat(opt?.dataset?.precio || 0);
+    const box = document.getElementById('precio-ref-box');
+    if (precioMercado > 0) {
+        document.getElementById('precio-ref-label').textContent =
+            'Bs. ' + precioMercado.toLocaleString('es-VE', { minimumFractionDigits: 4, maximumFractionDigits: 8 });
+        box.classList.remove('hidden');
+    } else {
+        box.classList.add('hidden');
+    }
+    calcular();
+}
+
+function usarPrecioMercado() {
+    if (precioMercado > 0) {
+        document.getElementById('inp-precio').value = precioMercado;
+        calcular();
+    }
+}
+
+function v(id) { return parseFloat(document.getElementById(id).value) || 0; }
+
+function fmt(n) {
+    return 'Bs. ' + n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function calcular() {
+    const cantidad  = v('inp-cantidad');
+    const precio    = v('inp-precio');
+    const derecho   = v('inp-derecho');
+    const comision  = v('inp-comision');
+    const iva       = v('inp-iva');
+
+    const bruto  = cantidad * precio;
+    const extras = derecho + comision + iva;
+    const total  = bruto + extras;
+
+    document.getElementById('show-bruto').textContent  = fmt(bruto);
+    document.getElementById('show-extras').textContent = fmt(extras);
+    document.getElementById('show-total').textContent  = fmt(total);
+
+    // Campos hidden para el POST
+    document.getElementById('hid-bruto').value = bruto.toFixed(8);
+    document.getElementById('hid-total').value = total.toFixed(8);
+}
+
+document.getElementById('form-compra').addEventListener('submit', function(e) {
+    const bruto = parseFloat(document.getElementById('hid-bruto').value) || 0;
+    const total = parseFloat(document.getElementById('hid-total').value) || 0;
+
+    if (!document.getElementById('sel-accion').value) {
+        e.preventDefault(); alert('⚠️ Selecciona una acción'); return;
+    }
+    if (v('inp-cantidad') <= 0) {
+        e.preventDefault(); alert('⚠️ La cantidad debe ser mayor a 0'); return;
+    }
+    if (v('inp-precio') <= 0) {
+        e.preventDefault(); alert('⚠️ El precio de compra debe ser mayor a 0'); return;
+    }
+
+    // Asegurar que los campos hidden estén actualizados antes de enviar
+    calcular();
+
+    const btn = document.getElementById('btn-submit');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+    btn.disabled = true;
+});
+
+// Inicializar al cargar
+calcular();
+</script>
+{% endblock %}

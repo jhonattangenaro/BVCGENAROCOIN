@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 md:p-8 transition-colors duration-500">
+<div class="max-w-3xl mx-auto">
+
+    <!-- Header -->
+    <div class="flex items-center gap-4 mb-8">
+        <a href="/portafolio" class="w-10 h-10 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm">
+            <i class="fas fa-arrow-left text-slate-500"></i>
+        </a>
+        <div>
+            <h1 class="text-2xl font-black uppercase italic tracking-tighter text-slate-800 dark:text-white">
+                Registrar <span class="text-red-600">Venta</span>
+            </h1>
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em]">Cierre de posición · {{ current_user }}</p>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div class="mb-6 flex items-center gap-3 p-4 rounded-2xl text-xs font-bold
+        {% if cat == 'success' %}bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400
+        {% else %}bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400{% endif %}">
+        <i class="fas {% if cat == 'success' %}fa-circle-check{% else %}fa-circle-exclamation{% endif %} text-base shrink-0"></i>{{ msg }}
+    </div>
+    {% endfor %}{% endif %}
+    {% endwith %}
+
+    {% if posiciones %}
+    <form method="POST" id="form-venta">
+        <div class="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden">
+
+            <!-- SELECCIÓN DE ACCIÓN -->
+            <div class="p-6 border-b border-slate-100 dark:border-slate-700">
+                <p class="text-[10px] font-black uppercase tracking-widest text-red-600 dark:text-red-400 mb-4">
+                    <i class="fas fa-list mr-1"></i> Seleccionar Posición a Vender
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Cards de posiciones disponibles -->
+                    <div class="sm:col-span-2 grid grid-cols-2 md:grid-cols-3 gap-3" id="posiciones-grid">
+                        {% for p in posiciones %}
+                        <div class="posicion-card cursor-pointer border-2 border-slate-200 dark:border-slate-700 rounded-2xl p-3 hover:border-red-400 dark:hover:border-red-500 transition-all"
+                             data-simbolo="{{ p.simbolo }}"
+                             data-nombre="{{ p.nombre }}"
+                             data-disponible="{{ p.disponible }}"
+                             data-costo="{{ p.costo_promedio }}"
+                             data-precio="{{ p.precio_mercado }}"
+                             onclick="seleccionarPosicion(this)">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div class="w-9 h-9 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-900 flex items-center justify-center shrink-0">
+                                    {% if p.imagen_url %}
+                                        <img src="{{ p.imagen_url }}" class="w-full h-full object-contain p-1"
+                                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                                        <span class="hidden w-full h-full items-center justify-center text-[10px] font-black text-slate-400">{{ p.simbolo[:2] }}</span>
+                                    {% else %}
+                                        <span class="text-[10px] font-black text-slate-400">{{ p.simbolo[:2] }}</span>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <p class="font-black text-slate-800 dark:text-white text-sm">{{ p.simbolo }}</p>
+                                    <p class="text-[9px] text-slate-400 font-bold">{{ p.nombre[:16] }}{% if p.nombre|length > 16 %}…{% endif %}</p>
+                                </div>
+                            </div>
+                            <div class="space-y-0.5">
+                                <div class="flex justify-between">
+                                    <span class="text-[9px] text-slate-400 font-bold uppercase">Disponible</span>
+                                    <span class="text-[10px] font-black text-slate-700 dark:text-slate-300">{{ "{:,.0f}".format(p.disponible) }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-[9px] text-slate-400 font-bold uppercase">Costo prom.</span>
+                                    <span class="text-[10px] font-black text-slate-500 dark:text-slate-400">{{ "%.2f"|format(p.costo_promedio) }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-[9px] text-slate-400 font-bold uppercase">Precio actual</span>
+                                    <span class="text-[10px] font-black text-blue-600 dark:text-blue-400">{{ "%.2f"|format(p.precio_mercado) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <input type="hidden" name="simbolo" id="inp-simbolo">
+                </div>
+
+                <!-- Acción seleccionada (resaltada) -->
+                <div id="seleccion-banner" class="hidden mt-4 flex items-center gap-3 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-2xl px-4 py-3">
+                    <i class="fas fa-check-circle text-red-500"></i>
+                    <span class="text-[11px] font-black text-red-700 dark:text-red-300">
+                        Vendiendo: <span id="sel-texto">—</span>
+                    </span>
+                    <span class="ml-auto text-[10px] font-bold text-red-500" id="sel-disponible"></span>
+                </div>
+            </div>
+
+            <!-- DATOS DE LA VENTA -->
+            <div class="p-6 border-b border-slate-100 dark:border-slate-700">
+                <p class="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4">
+                    <i class="fas fa-calculator mr-1"></i> Datos de la Venta
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase mb-1.5">Fecha de Venta</label>
+                        <input type="date" name="fecha_venta" required
+                            value="{{ now().strftime('%Y-%m-%d') }}"
+                            class="w-full px-4 py-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl font-mono text-sm text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-red-500 transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase mb-1.5">
+                            Cantidad a Vender <span id="lbl-max" class="text-red-500 normal-case">(máx. <span id="lbl-max-val">—</span>)</span>
+                        </label>
+                        <input type="number" name="cantidad" id="inp-cantidad" min="1" required placeholder="Ej: 500"
+                            oninput="calcularVenta()"
+                            class="w-full px-4 py-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl font-mono font-bold text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-red-500 transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase mb-1.5">Precio de Venta (Bs. por título)</label>
+                        <div class="relative">
+                            <input type="number" name="precio_venta" id="inp-precio" step="0.00000001" min="0" required placeholder="Ej: 1500.00"
+                                oninput="calcularVenta()"
+                                class="w-full px-4 py-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl font-mono font-bold text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-red-500 transition-all">
+                            <button type="button" onclick="usarPrecioMercado()"
+                                id="btn-usar-precio"
+                                class="hidden absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase hover:bg-blue-700 transition-all">
+                                Usar mercado
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COSTOS DE LA VENTA -->
+            <div class="p-6 border-b border-slate-100 dark:border-slate-700">
+                <p class="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-4">
+                    <i class="fas fa-receipt mr-1"></i> Costos de la Operación <span class="ml-2 font-normal text-slate-400 normal-case tracking-normal">Opcionales</span>
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase mb-1.5">Comisión del Corredor (Bs.)</label>
+                        <input type="number" name="comision" id="inp-comision" step="0.01" min="0" value="0" oninput="calcularVenta()"
+                            class="w-full px-4 py-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl font-mono text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-amber-500 transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-[9px] font-black text-slate-400 uppercase mb-1.5">IVA (Bs.)</label>
+                        <input type="number" name="iva" id="inp-iva" step="0.01" min="0" value="0" oninput="calcularVenta()"
+                            class="w-full px-4 py-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl font-mono text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-amber-500 transition-all">
+                    </div>
+                </div>
+            </div>
+
+            <!-- RESUMEN CALCULADO -->
+            <div class="p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+                <p class="text-[10px] font-black uppercase tracking-widest text-green-600 dark:text-green-400 mb-4">
+                    <i class="fas fa-sigma mr-1"></i> Resultado Estimado
+                </p>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
+                        <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Monto Bruto</p>
+                        <p class="text-base font-black font-mono text-slate-800 dark:text-white" id="show-bruto">Bs. 0.00</p>
+                        <p class="text-[9px] text-slate-400 mt-0.5">cantidad × precio</p>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
+                        <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Monto Neto</p>
+                        <p class="text-base font-black font-mono text-slate-800 dark:text-white" id="show-neto">Bs. 0.00</p>
+                        <p class="text-[9px] text-slate-400 mt-0.5">bruto − costos</p>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
+                        <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Costo Base</p>
+                        <p class="text-base font-black font-mono text-slate-500 dark:text-slate-400" id="show-costo">Bs. 0.00</p>
+                        <p class="text-[9px] text-slate-400 mt-0.5">costo prom. × cant.</p>
+                    </div>
+                    <div class="rounded-2xl border-2 p-4" id="ganancia-card">
+                        <p class="text-[9px] font-black uppercase mb-1" id="ganancia-label">G/P Realizada</p>
+                        <p class="text-base font-black font-mono" id="show-ganancia">Bs. 0.00</p>
+                        <p class="text-[9px] mt-0.5" id="show-ganancia-pct">0.00%</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOTONES -->
+            <div class="p-6 flex flex-col sm:flex-row gap-3">
+                <a href="/portafolio"
+                    class="flex-1 py-4 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-2xl text-[10px] font-black uppercase tracking-widest text-center hover:bg-slate-200 dark:hover:bg-slate-600 transition-all">
+                    Cancelar
+                </a>
+                <button type="submit" id="btn-submit"
+                    class="flex-1 py-4 bg-red-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-red-700 active:scale-95 transition-all shadow-lg shadow-red-600/20 flex items-center justify-center gap-2">
+                    <i class="fas fa-arrow-right-from-bracket"></i> Registrar Venta
+                </button>
+            </div>
+        </div>
+    </form>
+
+    {% else %}
+    <div class="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-200 dark:border-slate-700 p-16 text-center shadow-xl">
+        <i class="fas fa-briefcase text-5xl text-slate-300 dark:text-slate-600 mb-4 block"></i>
+        <p class="text-slate-500 dark:text-slate-400 font-black uppercase text-sm tracking-widest mb-4">No tienes posiciones abiertas para vender</p>
+        <a href="{{ url_for('agregar_accion') }}"
+           class="inline-block px-6 py-3 bg-purple-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-purple-700 transition-all">
+            <i class="fas fa-plus mr-2"></i>Registrar Compra
+        </a>
+    </div>
+    {% endif %}
+
+</div>
+</div>
+
+<script>
+// Datos de posiciones disponibles
+const POSICIONES = {
+    {% for p in posiciones %}
+    "{{ p.simbolo }}": {
+        nombre: "{{ p.nombre|replace('"','') }}",
+        disponible: {{ p.disponible }},
+        costo: {{ p.costo_promedio }},
+        precio_mercado: {{ p.precio_mercado }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+};
+
+let simboloActivo = null;
+
+function seleccionarPosicion(el) {
+    // Deseleccionar todos
+    document.querySelectorAll('.posicion-card').forEach(c => {
+        c.classList.remove('border-red-500','dark:border-red-400','bg-red-50','dark:bg-red-900/10');
+        c.classList.add('border-slate-200','dark:border-slate-700');
+    });
+    // Seleccionar el clickeado
+    el.classList.remove('border-slate-200','dark:border-slate-700');
+    el.classList.add('border-red-500','dark:border-red-400','bg-red-50','dark:bg-red-900/10');
+
+    simboloActivo = el.dataset.simbolo;
+    const pos = POSICIONES[simboloActivo];
+
+    document.getElementById('inp-simbolo').value   = simboloActivo;
+    document.getElementById('lbl-max-val').textContent = pos.disponible.toLocaleString();
+    document.getElementById('inp-cantidad').max    = pos.disponible;
+    document.getElementById('sel-texto').textContent = `${simboloActivo} — ${pos.nombre}`;
+    document.getElementById('sel-disponible').textContent = `${pos.disponible.toLocaleString()} disponibles`;
+    document.getElementById('seleccion-banner').classList.remove('hidden');
+
+    // Mostrar botón precio mercado si hay precio
+    const btnMercado = document.getElementById('btn-usar-precio');
+    if (pos.precio_mercado > 0) {
+        btnMercado.textContent = `Usar Bs.${pos.precio_mercado.toLocaleString('es-VE',{minimumFractionDigits:2})}`;
+        btnMercado.classList.remove('hidden');
+    } else {
+        btnMercado.classList.add('hidden');
+    }
+
+    calcularVenta();
+}
+
+function usarPrecioMercado() {
+    if (!simboloActivo) return;
+    document.getElementById('inp-precio').value = POSICIONES[simboloActivo].precio_mercado;
+    calcularVenta();
+}
+
+function v(id) { return parseFloat(document.getElementById(id).value) || 0; }
+
+function fmtBs(n) {
+    return 'Bs. ' + Math.abs(n).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function calcularVenta() {
+    const cantidad  = v('inp-cantidad');
+    const precio    = v('inp-precio');
+    const comision  = v('inp-comision');
+    const iva       = v('inp-iva');
+    const costo_prom = simboloActivo ? POSICIONES[simboloActivo].costo : 0;
+
+    const bruto    = cantidad * precio;
+    const neto     = bruto - comision - iva;
+    const costo_b  = costo_prom * cantidad;
+    const ganancia = neto - costo_b;
+    const pct      = costo_b > 0 ? ganancia / costo_b * 100 : 0;
+    const pos      = ganancia >= 0;
+
+    document.getElementById('show-bruto').textContent   = fmtBs(bruto);
+    document.getElementById('show-neto').textContent    = fmtBs(neto);
+    document.getElementById('show-costo').textContent   = fmtBs(costo_b);
+    document.getElementById('show-ganancia').textContent = (pos?'+':'-') + fmtBs(ganancia);
+    document.getElementById('show-ganancia-pct').textContent = (pos?'+':'') + pct.toFixed(2) + '%';
+
+    const card  = document.getElementById('ganancia-card');
+    const label = document.getElementById('ganancia-label');
+    const gVal  = document.getElementById('show-ganancia');
+    const gPct  = document.getElementById('show-ganancia-pct');
+
+    if (pos) {
+        card.className  = 'rounded-2xl border-2 p-4 bg-teal-50 dark:bg-teal-900/20 border-teal-300 dark:border-teal-700';
+        label.className = 'text-[9px] font-black uppercase mb-1 text-teal-600 dark:text-teal-400';
+        gVal.className  = 'text-base font-black font-mono text-teal-700 dark:text-teal-300';
+        gPct.className  = 'text-[9px] mt-0.5 text-teal-500';
+        label.textContent = '✅ Ganancia Realizada';
+    } else {
+        card.className  = 'rounded-2xl border-2 p-4 bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700';
+        label.className = 'text-[9px] font-black uppercase mb-1 text-orange-600 dark:text-orange-400';
+        gVal.className  = 'text-base font-black font-mono text-orange-700 dark:text-orange-300';
+        gPct.className  = 'text-[9px] mt-0.5 text-orange-500';
+        label.textContent = '⚠️ Pérdida Realizada';
+    }
+}
+
+// ── Auto-seleccionar si viene con ?simbolo= en la URL
+document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const simUrl = params.get('simbolo');
+    if (simUrl) {
+        const card = document.querySelector(`.posicion-card[data-simbolo="${simUrl.toUpperCase()}"]`);
+        if (card) card.click();
+    }
+});
+
+document.getElementById('form-venta')?.addEventListener('submit', function(e) {
+    if (!simboloActivo) {
+        e.preventDefault();
+        alert('⚠️ Selecciona una posición para vender');
+        return;
+    }
+    const cant = parseInt(document.getElementById('inp-cantidad').value) || 0;
+    const max  = POSICIONES[simboloActivo]?.disponible || 0;
+    if (cant <= 0) { e.preventDefault(); alert('⚠️ La cantidad debe ser mayor a 0'); return; }
+    if (cant > max) { e.preventDefault(); alert(`⚠️ Solo tienes ${max.toLocaleString()} acciones disponibles de ${simboloActivo}`); return; }
+    if (!v('inp-precio')) { e.preventDefault(); alert('⚠️ Ingresa el precio de venta'); return; }
+    const btn = document.getElementById('btn-submit');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+    btn.disabled = true;
+});
+</script>
+{% endblock %}

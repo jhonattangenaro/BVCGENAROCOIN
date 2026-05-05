@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-50 dark:bg-slate-900 p-4">
+    
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        <div>
+            <h1 class="text-3xl font-black uppercase italic text-slate-800 dark:text-white">🔍 Scanner de Mercado</h1>
+            <p class="text-blue-600 font-bold text-[10px] uppercase italic">RSI(14) • Sincronizado con Terminal</p>
+        </div>
+        
+        <div class="flex flex-wrap justify-center bg-white dark:bg-slate-800 p-1.5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 gap-1">
+            <button onclick="cambiarPeriodo('7', this)" class="periodo-btn px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all">7D</button>
+            <button onclick="cambiarPeriodo('14', this)" class="periodo-btn px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all bg-blue-600 text-white shadow-lg active-periodo">14D</button>
+            <button onclick="cambiarPeriodo('30', this)" class="periodo-btn px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all">30D</button>
+            <button onclick="cambiarPeriodo('90', this)" class="periodo-btn px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all">3 Meses</button>
+            <button onclick="cambiarPeriodo('180', this)" class="periodo-btn px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all">6 Meses</button>
+            <button onclick="cambiarPeriodo('365', this)" class="periodo-btn px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all">1 Año</button>
+            <button onclick="cambiarPeriodo('todo', this)" class="periodo-btn px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all">Histórico</button>
+        </div>
+    </div>
+
+    <div id="scanner-container" class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="col-span-full text-center py-20 italic font-black text-slate-400 uppercase text-xs">
+            <i class="fas fa-sync fa-spin mr-2"></i> Cargando Scanner...
+        </div>
+    </div>
+</div>
+
+<script>
+let periodoActual = '14';
+
+async function cambiarPeriodo(n, btn) {
+    periodoActual = n;
+    document.querySelectorAll('.periodo-btn').forEach(b => {
+        b.classList.remove('bg-blue-600', 'text-white', 'shadow-lg');
+        b.classList.add('text-slate-500', 'hover:bg-slate-100');
+    });
+    btn.classList.add('bg-blue-600', 'text-white', 'shadow-lg');
+    btn.classList.remove('text-slate-500', 'hover:bg-slate-100');
+    await ejecutarScanner();
+}
+
+async function ejecutarScanner() {
+    const container = document.getElementById('scanner-container');
+    container.innerHTML = '<div class="col-span-full text-center py-20 italic font-black text-slate-400 uppercase text-xs">Sincronizando...</div>';
+
+    try {
+        const response = await fetch(`/api/scanner-rsi?periodo=${periodoActual}&t=${Date.now()}`);
+        const resultados = await response.json();
+        
+        container.innerHTML = resultados.map(res => {
+            const esSobrecompra = res.rsi >= 70;
+            const esSobreventa = res.rsi <= 30;
+            const color = esSobrecompra ? "bg-red-600" : esSobreventa ? "bg-green-600" : "bg-slate-400";
+            const textColor = esSobrecompra ? "text-red-600" : esSobreventa ? "text-green-600" : "text-slate-600";
+            const bgColor = esSobrecompra ? "bg-red-50" : esSobreventa ? "bg-green-50" : "bg-slate-50";
+
+            return `
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-slate-700">
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-slate-100 dark:bg-slate-900 rounded-2xl flex items-center justify-center overflow-hidden">
+                                ${res.tiene_foto ? `<img src="/static/img/acciones/${res.simbolo}.png" class="w-8 h-8 object-contain">` : `<span class="text-xs font-black text-slate-400">${res.simbolo.slice(0,3)}</span>`}
+                            </div>
+                            <h3 class="font-black text-xl uppercase tracking-tighter">${res.simbolo}</h3>
+                        </div>
+                        <span class="text-[10px] font-black px-3 py-1 rounded-full ${bgColor} ${textColor}">
+                            ${esSobrecompra ? 'SOBRECOMPRA' : esSobreventa ? 'SOBREVENTA' : 'NEUTRAL'}
+                        </span>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-end">
+                            <p class="text-[10px] font-black text-slate-400 uppercase italic">RSI (14) - ${periodoActual}D</p>
+                            <span class="text-3xl font-black ${textColor}">${res.rsi.toFixed(2)}</span>
+                        </div>
+                        <div class="w-full bg-slate-100 dark:bg-slate-700 h-3 rounded-full overflow-hidden">
+                            <div class="${color} h-full transition-all duration-700 shadow-lg" style="width: ${res.rsi}%"></div>
+                        </div>
+                        <p class="text-[10px] font-bold text-slate-400 text-right uppercase italic">Cierre: Bs. ${res.precio.toFixed(2)}</p>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (e) { console.error(e); }
+}
+
+document.addEventListener('DOMContentLoaded', ejecutarScanner);
+</script>
+{% endblock %}

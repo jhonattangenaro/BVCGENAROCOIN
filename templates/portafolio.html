@@ -1,0 +1,1326 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 md:p-8 transition-colors duration-500">
+<div class="max-w-7xl mx-auto space-y-8">
+
+    <!-- ═══════════════════════════════════════════════
+         HEADER
+    ═══════════════════════════════════════════════ -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 class="text-3xl font-black uppercase italic tracking-tighter text-slate-800 dark:text-white">
+                💼 Mi <span class="text-purple-600">Portafolio</span>
+            </h1>
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em] mt-1">Control de Inversiones · {{ current_user }}</p>
+        </div>
+        <div class="flex gap-3 flex-wrap">
+            <a href="{{ url_for('actualizar_precios_portafolio') }}"
+               class="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-600/20 flex items-center gap-2">
+                <i class="fas fa-sync-alt"></i> Actualizar Precios
+            </a>
+            <a href="{{ url_for('vender_accion') }}"
+               class="px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-red-600/20 flex items-center gap-2">
+                <i class="fas fa-arrow-right-from-bracket"></i> Registrar Venta
+            </a>
+            <a href="{{ url_for('agregar_accion') }}"
+               class="px-5 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-purple-600/20 flex items-center gap-2">
+                <i class="fas fa-plus"></i> Agregar Compra
+            </a>
+        </div>
+    </div>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for cat, msg in messages %}
+        <div class="flex items-center gap-3 p-4 rounded-2xl text-xs font-bold
+            {% if cat == 'success' %}bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400
+            {% elif cat == 'warning' %}bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-amber-700 dark:text-amber-400
+            {% else %}bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400{% endif %}">
+            <i class="fas {% if cat == 'success' %}fa-circle-check{% elif cat == 'warning' %}fa-triangle-exclamation{% else %}fa-circle-exclamation{% endif %} text-base shrink-0"></i>
+            {{ msg }}
+        </div>
+        {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <!-- ═══════════════════════════════════════════════
+         KPI CARDS
+    ═══════════════════════════════════════════════ -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+
+        <div class="bg-white dark:bg-slate-800 p-6 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-700 border-b-4 border-b-blue-500">
+            <p class="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 mb-1">Total Invertido</p>
+            <p class="text-2xl font-black text-slate-800 dark:text-white font-mono">
+                Bs. {{ format_spanish(resumen.total_invertido) }}
+            </p>
+            <p class="text-[9px] text-slate-400 uppercase font-bold mt-1">Capital en posiciones abiertas</p>
+        </div>
+
+        <div class="bg-white dark:bg-slate-800 p-6 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-700 border-b-4 border-b-purple-500">
+            <p class="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 mb-1">Valor Actual</p>
+            <p class="text-2xl font-black text-slate-800 dark:text-white font-mono">
+                Bs. {{ format_spanish(resumen.valor_actual) }}
+            </p>
+            <p class="text-[9px] text-slate-400 uppercase font-bold mt-1">A precios de mercado</p>
+        </div>
+
+        <div class="bg-white dark:bg-slate-800 p-6 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-700
+            border-b-4 {% if resumen.ganancia_perdida >= 0 %}border-b-green-500{% else %}border-b-red-500{% endif %}">
+            <p class="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 mb-1">G/P No Realizada</p>
+            <p class="text-2xl font-black font-mono {% if resumen.ganancia_perdida >= 0 %}text-green-600 dark:text-green-400{% else %}text-red-600 dark:text-red-400{% endif %}">
+                {% if resumen.ganancia_perdida >= 0 %}+{% endif %}Bs. {{ format_spanish(resumen.ganancia_perdida) }}
+            </p>
+            <p class="text-[9px] text-slate-400 uppercase font-bold mt-1">Posiciones abiertas ({{ format_spanish(resumen.rendimiento_porcentaje) }}%)</p>
+        </div>
+
+        <div class="bg-white dark:bg-slate-800 p-6 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-700
+            border-b-4 {% if resumen.ganancia_realizada >= 0 %}border-b-teal-500{% else %}border-b-orange-500{% endif %}">
+            <p class="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 mb-1">G/P Realizada</p>
+            <p class="text-2xl font-black font-mono {% if resumen.ganancia_realizada >= 0 %}text-teal-600 dark:text-teal-400{% else %}text-orange-600 dark:text-orange-400{% endif %}">
+                {% if resumen.ganancia_realizada >= 0 %}+{% endif %}Bs. {{ format_spanish(resumen.ganancia_realizada) }}
+            </p>
+            <p class="text-[9px] text-slate-400 uppercase font-bold mt-1">{{ ventas|length }} venta(s) cerrada(s)</p>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         GRÁFICOS: EVOLUCIÓN + DISTRIBUCIÓN
+    ═══════════════════════════════════════════════ -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- ── EVOLUCIÓN DEL PORTAFOLIO ── -->
+        <div class="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden">
+            <!-- Header -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-5 border-b border-slate-100 dark:border-slate-700">
+                <div>
+                    <p class="font-black text-slate-800 dark:text-white uppercase tracking-tight text-sm">Evolución del Portafolio</p>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Valor total histórico a precios de mercado</p>
+                </div>
+                <div class="flex gap-2 flex-wrap">
+                    {% for key, label in [('1s','1 Sem'),('1m','1 Mes'),('3m','3 Meses'),('1y','1 Año'),('max','Máximo')] %}
+                    <button onclick="cargarEvolucion('{{ key }}')"
+                        id="btn-periodo-{{ key }}"
+                        class="periodo-btn px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all
+                               {% if key == '1m' %}bg-purple-600 text-white{% else %}bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 hover:bg-purple-100 dark:hover:bg-purple-900/30 hover:text-purple-600{% endif %}">
+                        {{ label }}
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+            <!-- Chart -->
+            <div class="p-5 relative" style="min-height:260px;">
+                <div id="evolucion-loading" class="absolute inset-0 flex items-center justify-center">
+                    <div class="text-center text-slate-400">
+                        <i class="fas fa-spinner fa-spin text-2xl mb-2 block text-purple-500"></i>
+                        <p class="text-[10px] font-black uppercase">Cargando datos…</p>
+                    </div>
+                </div>
+                <div id="evolucion-empty" class="hidden absolute inset-0 flex items-center justify-center">
+                    <div class="text-center text-slate-400">
+                        <i class="fas fa-chart-line text-3xl mb-2 block"></i>
+                        <p class="text-[10px] font-black uppercase">Sin datos históricos para este período</p>
+                    </div>
+                </div>
+                <canvas id="chart-evolucion" class="hidden" height="220"></canvas>
+            </div>
+            <!-- Footer: valor actual del rango -->
+            <div id="evolucion-footer" class="hidden px-5 pb-4 flex items-center justify-between">
+                <span class="text-[10px] font-bold text-slate-400 uppercase" id="evolucion-rango-label"></span>
+                <span class="text-[11px] font-black" id="evolucion-delta"></span>
+            </div>
+        </div>
+
+        <!-- ── DISTRIBUCIÓN ── -->
+        <div class="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden">
+            <!-- Header -->
+            <div class="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
+                <div>
+                    <p class="font-black text-slate-800 dark:text-white uppercase tracking-tight text-sm">Distribución</p>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Visualiza tu diversificación</p>
+                </div>
+                <select id="dist-modo" onchange="renderDistribucion()"
+                    class="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-black uppercase px-3 py-2 rounded-xl outline-none border-none cursor-pointer">
+                    <option value="acciones">Por Acciones</option>
+                    <option value="valor">Por Valor</option>
+                    <option value="inversion">Por Inversión</option>
+                </select>
+            </div>
+            <!-- Chart area -->
+            <div class="p-5 flex flex-col items-center" style="min-height:260px;">
+                {% if resumen.detalle_acciones %}
+                <div class="relative" style="width:208px;height:208px;">
+                    <canvas id="chart-dist" width="208" height="208" style="display:block;"></canvas>
+                    <!-- Centro del donut -->
+                    <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <p class="text-[9px] font-black uppercase text-slate-400 tracking-widest" id="dist-center-label">MI PORTAFOLIO</p>
+                        <p class="text-2xl font-black text-slate-800 dark:text-white" id="dist-center-value">
+                            {{ resumen.acciones_diferentes }} acc.
+                        </p>
+                    </div>
+                </div>
+                <!-- Tooltip personalizado -->
+                <div id="dist-tooltip"
+                     class="hidden fixed z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-4 min-w-[160px] pointer-events-none transition-all">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div id="tt-img-wrap" class="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden shrink-0">
+                            <span id="tt-initials" class="text-xs font-black text-slate-400"></span>
+                        </div>
+                        <div>
+                            <p id="tt-simbolo" class="font-black text-slate-800 dark:text-white text-sm"></p>
+                            <p id="tt-nombre" class="text-[9px] text-slate-400 uppercase font-bold"></p>
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="flex justify-between gap-4">
+                            <span class="text-[9px] font-bold text-slate-400 uppercase">Cantidad</span>
+                            <span id="tt-cantidad" class="text-[11px] font-black text-slate-700 dark:text-slate-300"></span>
+                        </div>
+                        <div class="flex justify-between gap-4">
+                            <span class="text-[9px] font-bold text-slate-400 uppercase">Valor</span>
+                            <span id="tt-valor" class="text-[11px] font-black text-slate-700 dark:text-slate-300"></span>
+                        </div>
+                        <div class="flex justify-between gap-4">
+                            <span class="text-[9px] font-bold text-slate-400 uppercase">% Portafolio</span>
+                            <span id="tt-pct" class="text-[11px] font-black text-purple-600 dark:text-purple-400"></span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Leyenda -->
+                <div class="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2" id="dist-legend"></div>
+                {% else %}
+                <div class="flex-1 flex items-center justify-center">
+                    <p class="text-[10px] font-black uppercase text-slate-400">Sin posiciones</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Datos distribución para JS (inyectados desde Jinja) -->
+    <script id="dist-data" type="application/json">
+    [{% for a in resumen.detalle_acciones %}{
+        "simbolo": "{{ a.simbolo }}",
+        "nombre":  "{{ a.nombre|replace('"','') }}",
+        "cantidad": {{ a.cantidad }},
+        "valor_actual": {{ a.valor_actual }},
+        "costo_total": {{ a.costo_total }},
+        "imagen_url": "{{ a.imagen_url or '' }}"
+    }{% if not loop.last %},{% endif %}{% endfor %}]
+    </script>
+
+    <!-- ═══════════════════════════════════════════════
+         DETALLE POR ACCIÓN
+    ═══════════════════════════════════════════════ -->
+    <div>
+        <div class="flex items-center gap-3 mb-5">
+            <div class="w-2 h-8 bg-purple-600 rounded-full"></div>
+            <h2 class="text-xl font-black uppercase italic text-slate-800 dark:text-white tracking-tight">Posiciones Abiertas</h2>
+            <span class="text-[9px] bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-3 py-1 rounded-full font-black uppercase">
+                {{ resumen.detalle_acciones|length }} símbolo(s)
+            </span>
+        </div>
+
+        {% if resumen.detalle_acciones %}
+        <div class="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 dark:bg-slate-900/60 text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-200 dark:border-slate-700">
+                            <th class="px-5 py-4">Acción</th>
+                            <th class="px-5 py-4 text-right">Cantidad</th>
+                            <th class="px-5 py-4 text-right">Inversión Total</th>
+                            <th class="px-5 py-4 text-right">Costo Prom.</th>
+                            <th class="px-5 py-4 text-right">Precio Actual</th>
+                            <th class="px-5 py-4 text-right">Valor Actual</th>
+                            <th class="px-5 py-4 text-right">Ganancia/Pérdida</th>
+                            <th class="px-5 py-4 text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for accion in resumen.detalle_acciones %}
+                        <tr class="border-b border-slate-100 dark:border-slate-700/50 hover:bg-purple-500/5 transition-all">
+
+                            <!-- Acción + logo -->
+                            <td class="px-5 py-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-11 h-11 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-900 flex items-center justify-center shrink-0">
+                                        {% if accion.tiene_imagen %}
+                                            <img src="{{ accion.imagen_url }}" alt="{{ accion.simbolo }}"
+                                                 class="w-full h-full object-contain p-1.5"
+                                                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                                            <span class="hidden w-full h-full items-center justify-center text-xs font-black text-slate-400">{{ accion.simbolo[:2] }}</span>
+                                        {% else %}
+                                            <span class="text-xs font-black text-slate-400">{{ accion.simbolo[:2] }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <p class="font-black text-slate-800 dark:text-white text-sm">{{ accion.simbolo }}</p>
+                                        <p class="text-[9px] text-slate-400 uppercase font-bold">
+                                            {{ accion.nombre[:18] }}{% if accion.nombre|length > 18 %}…{% endif %}
+                                        </p>
+                                        <span class="text-[9px] font-black {% if accion.variacion_diaria > 0 %}text-green-500{% elif accion.variacion_diaria < 0 %}text-red-500{% else %}text-slate-400{% endif %}">
+                                            {{ "▲" if accion.variacion_diaria > 0 else "▼" if accion.variacion_diaria < 0 else "●" }}
+                                            {{ format_spanish(accion.variacion_diaria) }}% hoy
+                                        </span>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <!-- Cantidad -->
+                            <td class="px-5 py-4 text-right font-mono font-bold text-slate-700 dark:text-slate-300 text-sm">
+                                {{ "{:,.0f}".format(accion.cantidad) }}
+                            </td>
+
+                            <!-- Inversión total -->
+                            <td class="px-5 py-4 text-right font-mono text-sm text-slate-700 dark:text-slate-300">
+                                Bs. {{ format_spanish(accion.costo_total) }}
+                            </td>
+
+                            <!-- Costo promedio -->
+                            <td class="px-5 py-4 text-right font-mono text-sm text-slate-500 dark:text-slate-400">
+                                Bs. {{ format_spanish(accion.precio_promedio_por_accion) }}
+                            </td>
+
+                            <!-- Precio actual -->
+                            <td class="px-5 py-4 text-right">
+                                <p class="font-mono font-black text-sm text-slate-800 dark:text-white">
+                                    Bs. {{ format_spanish(accion.precio_actual) }}
+                                </p>
+                                <p class="text-[9px] text-slate-400 font-bold">{{ accion.fecha_precio }}</p>
+                            </td>
+
+                            <!-- Valor actual -->
+                            <td class="px-5 py-4 text-right font-mono font-bold text-sm text-slate-800 dark:text-white">
+                                Bs. {{ format_spanish(accion.valor_actual) }}
+                            </td>
+
+                            <!-- Ganancia/pérdida -->
+                            <td class="px-5 py-4 text-right">
+                                <p class="font-mono font-black text-sm {% if accion.ganancia >= 0 %}text-green-600 dark:text-green-400{% else %}text-red-600 dark:text-red-400{% endif %}">
+                                    {% if accion.ganancia >= 0 %}+{% endif %}Bs. {{ format_spanish(accion.ganancia) }}
+                                </p>
+                                <p class="text-[10px] font-black {% if accion.rendimiento >= 0 %}text-green-500{% else %}text-red-500{% endif %}">
+                                    ({% if accion.rendimiento >= 0 %}+{% endif %}{{ format_spanish(accion.rendimiento) }}%)
+                                </p>
+                            </td>
+
+                            <!-- Acciones -->
+                            <td class="px-5 py-4 text-center">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <a href="{{ url_for('agregar_accion') }}"
+                                       class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-900/30 text-purple-600 hover:bg-purple-200 dark:hover:bg-purple-800 transition-all"
+                                       title="Agregar más">
+                                        <i class="fas fa-plus text-xs"></i>
+                                    </a>
+                                    <a href="{{ url_for('consulta') }}?simbolo={{ accion.simbolo }}"
+                                       class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 hover:bg-blue-200 dark:hover:bg-blue-800 transition-all"
+                                       title="Ver análisis">
+                                        <i class="fas fa-chart-line text-xs"></i>
+                                    </a>
+                                    <a href="{{ url_for('vender_accion') }}?simbolo={{ accion.simbolo }}"
+                                       class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-500 hover:bg-red-200 dark:hover:bg-red-800 transition-all"
+                                       title="Registrar venta">
+                                        <i class="fas fa-arrow-right-from-bracket text-xs"></i>
+                                    </a>
+                                    <button onclick="abrirTarjeta('{{ accion.simbolo }}')"
+                                       class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-teal-100 dark:bg-teal-900/30 text-teal-600 hover:bg-teal-200 dark:hover:bg-teal-800 transition-all"
+                                       title="Compartir tarjeta">
+                                        <i class="fas fa-share-nodes text-xs"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-200 dark:border-slate-700 p-16 text-center shadow-xl">
+            <i class="fas fa-briefcase text-5xl text-slate-300 dark:text-slate-600 mb-4"></i>
+            <p class="text-slate-500 dark:text-slate-400 font-black uppercase text-sm tracking-widest mb-4">
+                Sin inversiones registradas
+            </p>
+            <a href="{{ url_for('agregar_accion') }}"
+               class="inline-block px-6 py-3 bg-purple-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-purple-700 transition-all shadow-lg shadow-purple-600/20">
+                <i class="fas fa-plus mr-2"></i>Agregar Primera Inversión
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         HISTORIAL DE TRANSACCIONES
+    ═══════════════════════════════════════════════ -->
+    <div>
+        <div class="flex items-center gap-3 mb-5">
+            <div class="w-2 h-8 bg-amber-500 rounded-full"></div>
+            <h2 class="text-xl font-black uppercase italic text-slate-800 dark:text-white tracking-tight">Historial de Transacciones</h2>
+            <span class="text-[9px] bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-3 py-1 rounded-full font-black uppercase">
+                {{ transacciones|length }} transacción{% if transacciones|length != 1 %}es{% endif %}
+            </span>
+        </div>
+
+        <div class="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 dark:bg-slate-900/60 text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-200 dark:border-slate-700">
+                            <th class="px-5 py-4">Fecha Compra</th>
+                            <th class="px-5 py-4">Acción</th>
+                            <th class="px-5 py-4 text-right">Cantidad</th>
+                            <th class="px-5 py-4 text-right">Precio Compra</th>
+                            <th class="px-5 py-4 text-right">Monto Total</th>
+                            <th class="px-5 py-4 text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in transacciones %}
+                        <tr class="border-b border-slate-100 dark:border-slate-700/50 hover:bg-amber-500/5 transition-all">
+
+                            <td class="px-5 py-4 font-mono text-sm text-slate-600 dark:text-slate-400">{{ t.fecha_compra }}</td>
+
+                            <td class="px-5 py-4">
+                                <div class="flex items-center gap-3">
+                                    {% set img = obtener_imagen_accion(t.simbolo) %}
+                                    <div class="w-9 h-9 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-900 flex items-center justify-center shrink-0">
+                                        {% if img %}
+                                            <img src="{{ img }}" alt="{{ t.simbolo }}"
+                                                 class="w-full h-full object-contain p-1"
+                                                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                                            <span class="hidden w-full h-full items-center justify-center text-[10px] font-black text-slate-400">{{ t.simbolo[:2] }}</span>
+                                        {% else %}
+                                            <span class="text-[10px] font-black text-slate-400">{{ t.simbolo[:2] }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <p class="font-black text-slate-800 dark:text-white text-sm">{{ t.simbolo }}</p>
+                                        {% if t.nombre_accion %}
+                                        <p class="text-[9px] text-slate-400 uppercase font-bold">{{ t.nombre_accion[:20] }}{% if t.nombre_accion|length > 20 %}…{% endif %}</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td class="px-5 py-4 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
+                                {{ "{:,.0f}".format(t.cantidad) }}
+                            </td>
+
+                            <td class="px-5 py-4 text-right font-mono text-sm text-slate-700 dark:text-slate-300">
+                                Bs. {{ format_spanish(t.precio_compra) }}
+                            </td>
+
+                            <td class="px-5 py-4 text-right font-mono font-bold text-slate-800 dark:text-white">
+                                Bs. {{ format_spanish(t.monto_total) }}
+                            </td>
+
+                            <td class="px-5 py-4 text-center">
+                                <a href="{{ url_for('editar_accion', id=t.id) }}"
+                                   class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 hover:bg-amber-200 dark:hover:bg-amber-800 transition-all mr-1"
+                                   title="Editar">
+                                    <i class="fas fa-edit text-xs"></i>
+                                </a>
+                                <form action="{{ url_for('eliminar_accion', id=t.id) }}" method="POST" class="inline"
+                                      onsubmit="return confirm('¿Eliminar esta transacción?')">
+                                    <button type="submit"
+                                        class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-500 hover:bg-red-200 dark:hover:bg-red-800 transition-all"
+                                        title="Eliminar">
+                                        <i class="fas fa-trash text-xs"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="px-5 py-12 text-center text-slate-400 dark:text-slate-500">
+                                <i class="fas fa-file-invoice-dollar text-3xl mb-3 block"></i>
+                                <p class="font-black uppercase text-xs tracking-widest">Sin transacciones registradas</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if transacciones %}
+            <div class="px-5 py-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30 flex justify-between items-center">
+                <p class="text-[10px] font-bold text-slate-400 uppercase">
+                    Mostrando {{ transacciones|length }} transacciones
+                </p>
+                <p class="text-[11px] font-black text-slate-700 dark:text-slate-300">
+                    Total invertido: <span class="text-purple-600 dark:text-purple-400">Bs. {{ format_spanish(resumen.total_invertido) }}</span>
+                </p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         HISTORIAL DE VENTAS
+    ═══════════════════════════════════════════════ -->
+    <div>
+        <div class="flex items-center gap-3 mb-5">
+            <div class="w-2 h-8 bg-red-500 rounded-full"></div>
+            <h2 class="text-xl font-black uppercase italic text-slate-800 dark:text-white tracking-tight">Historial de Ventas</h2>
+            <span class="text-[9px] bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-3 py-1 rounded-full font-black uppercase">
+                {{ ventas|length }} venta{% if ventas|length != 1 %}s{% endif %}
+            </span>
+            <a href="{{ url_for('vender_accion') }}"
+               class="ml-auto px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2">
+                <i class="fas fa-plus"></i> Nueva Venta
+            </a>
+        </div>
+
+        <div class="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 dark:bg-slate-900/60 text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-200 dark:border-slate-700">
+                            <th class="px-5 py-4">Fecha Venta</th>
+                            <th class="px-5 py-4">Acción</th>
+                            <th class="px-5 py-4 text-right">Cantidad</th>
+                            <th class="px-5 py-4 text-right">Precio Venta</th>
+                            <th class="px-5 py-4 text-right">Costo Prom.</th>
+                            <th class="px-5 py-4 text-right">Monto Neto</th>
+                            <th class="px-5 py-4 text-right">G/P Realizada</th>
+                            <th class="px-5 py-4 text-center">Acc.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for v in ventas %}
+                        <tr class="border-b border-slate-100 dark:border-slate-700/50 hover:bg-red-500/5 transition-all">
+                            <td class="px-5 py-4 font-mono text-sm text-slate-600 dark:text-slate-400">{{ v.fecha_venta }}</td>
+                            <td class="px-5 py-4">
+                                <div class="flex items-center gap-3">
+                                    {% set img = obtener_imagen_accion(v.simbolo) %}
+                                    <div class="w-9 h-9 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-900 flex items-center justify-center shrink-0">
+                                        {% if img %}
+                                            <img src="{{ img }}" alt="{{ v.simbolo }}" class="w-full h-full object-contain p-1"
+                                                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                                            <span class="hidden w-full h-full items-center justify-center text-[10px] font-black text-slate-400">{{ v.simbolo[:2] }}</span>
+                                        {% else %}
+                                            <span class="text-[10px] font-black text-slate-400">{{ v.simbolo[:2] }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <p class="font-black text-slate-800 dark:text-white text-sm">{{ v.simbolo }}</p>
+                                        {% if v.nombre_accion %}
+                                        <p class="text-[9px] text-slate-400 uppercase font-bold">{{ v.nombre_accion[:20] }}{% if v.nombre_accion|length > 20 %}…{% endif %}</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-5 py-4 text-right font-mono font-bold text-slate-700 dark:text-slate-300">{{ "{:,.0f}".format(v.cantidad) }}</td>
+                            <td class="px-5 py-4 text-right font-mono text-sm text-slate-700 dark:text-slate-300">Bs. {{ format_spanish(v.precio_venta) }}</td>
+                            <td class="px-5 py-4 text-right font-mono text-sm text-slate-500 dark:text-slate-400">Bs. {{ format_spanish(v.costo_promedio) }}</td>
+                            <td class="px-5 py-4 text-right font-mono font-bold text-slate-800 dark:text-white">Bs. {{ format_spanish(v.monto_neto) }}</td>
+                            <td class="px-5 py-4 text-right">
+                                <p class="font-mono font-black text-sm {% if v.ganancia_realizada >= 0 %}text-teal-600 dark:text-teal-400{% else %}text-orange-600 dark:text-orange-400{% endif %}">
+                                    {% if v.ganancia_realizada >= 0 %}+{% endif %}Bs. {{ format_spanish(v.ganancia_realizada) }}
+                                </p>
+                                {% set pct_g = (v.ganancia_realizada / (v.costo_promedio * v.cantidad) * 100) if v.costo_promedio > 0 else 0 %}
+                                <p class="text-[10px] font-black {% if pct_g >= 0 %}text-teal-500{% else %}text-orange-500{% endif %}">
+                                    ({% if pct_g >= 0 %}+{% endif %}{{ format_spanish(pct_g) }}%)
+                                </p>
+                            </td>
+                            <td class="px-5 py-4 text-center">
+                                <form action="{{ url_for('eliminar_venta', id=v.id) }}" method="POST" class="inline"
+                                      onsubmit="return confirm('¿Eliminar este registro de venta? Esto restaurará las acciones al portafolio.')">
+                                    <button type="submit"
+                                        class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-500 hover:bg-red-200 dark:hover:bg-red-800 transition-all"
+                                        title="Eliminar venta">
+                                        <i class="fas fa-trash text-xs"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="px-5 py-12 text-center text-slate-400 dark:text-slate-500">
+                                <i class="fas fa-hand-holding-dollar text-3xl mb-3 block"></i>
+                                <p class="font-black uppercase text-xs tracking-widest mb-3">Sin ventas registradas</p>
+                                <a href="{{ url_for('vender_accion') }}"
+                                   class="inline-block px-5 py-2.5 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-red-700 transition-all">
+                                    Registrar primera venta
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if ventas %}
+            <div class="px-5 py-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30 flex justify-between items-center flex-wrap gap-2">
+                <p class="text-[10px] font-bold text-slate-400 uppercase">{{ ventas|length }} venta(s) registrada(s)</p>
+                <p class="text-[11px] font-black {% if resumen.ganancia_realizada >= 0 %}text-teal-600 dark:text-teal-400{% else %}text-orange-500{% endif %}">
+                    G/P total realizada:
+                    <span>{% if resumen.ganancia_realizada >= 0 %}+{% endif %}Bs. {{ format_spanish(resumen.ganancia_realizada) }}</span>
+                </p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+</div>
+
+    <!-- Datos distribución inyectados por Jinja para el JS -->
+    
+
+<script>
+// ══════════════════════════════════════════════════
+//  UTILIDADES
+// ══════════════════════════════════════════════════
+const PALETTE = [
+    '#7c3aed','#2563eb','#059669','#f59e0b','#dc2626',
+    '#a855f7','#3b82f6','#10b981','#d97706','#ef4444',
+    '#6d28d9','#1d4ed8','#047857','#b45309','#b91c1c',
+];
+
+const isDark = () => document.documentElement.classList.contains('dark');
+
+function fmtBs(v) {
+    return 'Bs. ' + Number(v).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Esperar a que Chart.js esté disponible (cargado async en base.html)
+function whenChartReady(fn) {
+    if (typeof Chart !== 'undefined') { fn(); return; }
+    const t = setInterval(() => { if (typeof Chart !== 'undefined') { clearInterval(t); fn(); } }, 80);
+}
+
+// ══════════════════════════════════════════════════
+//  EVOLUCIÓN DEL PORTAFOLIO
+// ══════════════════════════════════════════════════
+let chartEvolucion = null;
+let periodoActivo  = '1m';
+
+async function cargarEvolucion(periodo) {
+    periodoActivo = periodo;
+
+    // Actualizar botones
+    document.querySelectorAll('.periodo-btn').forEach(b => {
+        b.className = b.className
+            .replace('bg-purple-600','').replace('text-white','')
+            + ' bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400';
+    });
+    const btnActivo = document.getElementById('btn-periodo-' + periodo);
+    if (btnActivo) {
+        btnActivo.className = btnActivo.className
+            .replace('bg-slate-100','').replace('dark:bg-slate-700','')
+            .replace('text-slate-500','').replace('dark:text-slate-400','')
+            + ' bg-purple-600 text-white';
+    }
+
+    const loading = document.getElementById('evolucion-loading');
+    const empty   = document.getElementById('evolucion-empty');
+    const canvas  = document.getElementById('chart-evolucion');
+    const footer  = document.getElementById('evolucion-footer');
+
+    loading.style.display = '';
+    empty.classList.add('hidden');
+    canvas.classList.add('hidden');
+    footer.classList.add('hidden');
+
+    try {
+        const res  = await fetch('/api/portafolio/evolucion?periodo=' + periodo);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+
+        loading.style.display = 'none';
+
+        if (!data.fechas || data.fechas.length === 0) {
+            empty.classList.remove('hidden');
+            return;
+        }
+
+        canvas.classList.remove('hidden');
+
+        whenChartReady(() => {
+            const dark = isDark();
+            const tc   = dark ? '#94a3b8' : '#64748b';
+            const gc   = dark ? 'rgba(30,41,59,0.5)' : '#f1f5f9';
+            const tooltipBg     = dark ? '#0f172a' : '#fff';
+            const tooltipBorder = dark ? '#334155' : '#e2e8f0';
+
+            if (chartEvolucion) { chartEvolucion.destroy(); chartEvolucion = null; }
+
+            const nPuntos = data.fechas.length;
+
+            chartEvolucion = new Chart(canvas.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: data.fechas,
+                    datasets: [
+                        {
+                            // Línea 1: Valor de mercado (purple/violet)
+                            label: 'Valor Mercado',
+                            data: data.valores_mercado,
+                            borderColor: '#7c3aed',
+                            backgroundColor: 'rgba(124,58,237,0.12)',
+                            borderWidth: 2.5,
+                            pointRadius: nPuntos > 60 ? 0 : 2,
+                            pointHoverRadius: 6,
+                            pointHoverBackgroundColor: '#7c3aed',
+                            fill: true,
+                            tension: 0.3,
+                            order: 1,
+                        },
+                        {
+                            // Línea 2: Capital invertido (cyan/blue)
+                            label: 'Capital Invertido',
+                            data: data.capital_invertido,
+                            borderColor: '#38bdf8',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            borderDash: [],
+                            pointRadius: 0,
+                            pointHoverRadius: 5,
+                            pointHoverBackgroundColor: '#38bdf8',
+                            fill: false,
+                            tension: 0,   // línea recta — refleja escalones de compras
+                            order: 0,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            align: 'center',
+                            labels: {
+                                color: tc,
+                                font: { size: 10, weight: 'bold' },
+                                usePointStyle: true,
+                                pointStyleWidth: 20,
+                                padding: 16,
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: tooltipBg,
+                            borderColor: tooltipBorder,
+                            borderWidth: 1,
+                            titleColor: tc,
+                            padding: 12,
+                            callbacks: {
+                                title: items => items[0].label,
+                                label: ctx => {
+                                    const v   = ctx.parsed.y;
+                                    const fmt = 'Bs. ' + v.toLocaleString('es-VE', {minimumFractionDigits:2});
+                                    return ` ${ctx.dataset.label}: ${fmt}`;
+                                },
+                                afterBody: items => {
+                                    const vm  = items.find(i => i.datasetIndex === 0)?.parsed.y || 0;
+                                    const cap = items.find(i => i.datasetIndex === 1)?.parsed.y || 0;
+                                    if (!vm || !cap) return [];
+                                    const gp    = vm - cap;
+                                    const pct   = cap > 0 ? gp / cap * 100 : 0;
+                                    const signo = gp >= 0 ? '+' : '';
+                                    return [
+                                        '',
+                                        ` G/P: ${signo}Bs. ${Math.abs(gp).toLocaleString('es-VE',{minimumFractionDigits:2})}  (${signo}${pct.toFixed(2)}%)`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: gc },
+                            ticks: { color: tc, font: { size: 9, weight: 'bold' }, maxTicksLimit: 8, maxRotation: 0 }
+                        },
+                        y: {
+                            grid: { color: gc },
+                            ticks: {
+                                color: tc,
+                                font: { size: 9, weight: 'bold' },
+                                callback: v => v >= 1e6 ? 'Bs.'+(v/1e6).toFixed(1)+'M'
+                                             : v >= 1e3 ? 'Bs.'+(v/1e3).toFixed(0)+'k'
+                                             : 'Bs.'+v.toFixed(0)
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Footer: G/P real desde la API (no calculada en el cliente)
+            const gp   = data.gp_total;
+            const pct  = data.gp_pct;
+            const pos  = gp >= 0;
+            const signo = pos ? '+' : '';
+            const dEl   = document.getElementById('evolucion-delta');
+            const capital_fmt = data.capital_total.toLocaleString('es-VE', {minimumFractionDigits:2});
+            const vm_fmt      = data.valor_actual_total.toLocaleString('es-VE', {minimumFractionDigits:2});
+            dEl.textContent = `${signo}Bs. ${Math.abs(gp).toLocaleString('es-VE',{minimumFractionDigits:2})}  (${signo}${pct.toFixed(2)}%)`;
+            dEl.className   = 'text-[11px] font-black ' + (pos ? 'text-green-500 dark:text-green-400' : 'text-red-500');
+
+            const rl = {'1s':'Última semana','1m':'Último mes','3m':'Últimos 3 meses','1y':'Último año','max':'Histórico completo'};
+            document.getElementById('evolucion-rango-label').textContent = rl[periodo] || '';
+            footer.classList.remove('hidden');
+        });
+
+    } catch(e) {
+        loading.style.display = 'none';
+        empty.classList.remove('hidden');
+        console.error('Error evolución:', e);
+    }
+}
+
+// ══════════════════════════════════════════════════
+//  DISTRIBUCIÓN (DONUT)
+// ══════════════════════════════════════════════════
+let chartDist = null;
+let distPcts  = [];
+
+const distRawData = (() => {
+    try { return JSON.parse(document.getElementById('dist-data')?.textContent || '[]'); }
+    catch(e) { return []; }
+})();
+
+function renderDistribucion() {
+    if (!distRawData.length) return;
+    const canvas = document.getElementById('chart-dist');
+    if (!canvas) return;
+
+    const modo     = document.getElementById('dist-modo').value;
+    const totalAcc = distRawData.reduce((s,a) => s + a.cantidad, 0);
+    const totalVal = distRawData.reduce((s,a) => s + a.valor_actual, 0);
+    const totalInv = distRawData.reduce((s,a) => s + a.costo_total, 0);
+    const valores  = distRawData.map(a => modo==='valor' ? a.valor_actual : modo==='inversion' ? a.costo_total : a.cantidad);
+    const total    = valores.reduce((s,v) => s + v, 0);
+    distPcts       = valores.map(v => total > 0 ? v/total*100 : 0);
+
+    whenChartReady(() => {
+        if (chartDist) { chartDist.destroy(); chartDist = null; }
+
+        chartDist = new Chart(canvas.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: distRawData.map(a => a.simbolo),
+                datasets: [{
+                    data: valores,
+                    backgroundColor: PALETTE.slice(0, distRawData.length),
+                    borderWidth: 4,
+                    borderColor: isDark() ? '#0f172a' : '#fff',
+                    hoverBorderWidth: 0,
+                    hoverOffset: 10,
+                }]
+            },
+            options: {
+                responsive: false,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: { legend: { display: false }, tooltip: { enabled: false } },
+            }
+        });
+
+        // Hover con API nativa del canvas (compatible Chart.js v3+)
+        canvas.addEventListener('mousemove', onCanvasMove);
+        canvas.addEventListener('mouseleave', onCanvasLeave);
+
+        // Leyenda
+        const legend = document.getElementById('dist-legend');
+        if (legend) {
+            legend.innerHTML = distRawData.map((a,i) =>
+                `<div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                    <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${PALETTE[i]}"></span>${a.simbolo}
+                </div>`
+            ).join('');
+        }
+
+        setCentro(modo, totalAcc, totalVal, totalInv);
+    });
+}
+
+function onCanvasMove(e) {
+    if (!chartDist) return;
+    const pts = chartDist.getElementsAtEventForMode(e, 'nearest', { intersect: true }, false);
+    const modo = document.getElementById('dist-modo')?.value || 'acciones';
+    const tA = distRawData.reduce((s,a)=>s+a.cantidad,0);
+    const tV = distRawData.reduce((s,a)=>s+a.valor_actual,0);
+    const tI = distRawData.reduce((s,a)=>s+a.costo_total,0);
+    if (pts.length) showTT(e, pts[0].index);
+    else { hideTT(); setCentro(modo,tA,tV,tI); }
+}
+
+function onCanvasLeave() {
+    hideTT();
+    const modo = document.getElementById('dist-modo')?.value || 'acciones';
+    const tA = distRawData.reduce((s,a)=>s+a.cantidad,0);
+    const tV = distRawData.reduce((s,a)=>s+a.valor_actual,0);
+    const tI = distRawData.reduce((s,a)=>s+a.costo_total,0);
+    setCentro(modo,tA,tV,tI);
+}
+
+function setCentro(modo, tA, tV, tI) {
+    const lbl = document.getElementById('dist-center-label');
+    const val = document.getElementById('dist-center-value');
+    if (!lbl || !val) return;
+    lbl.textContent = 'MI PORTAFOLIO';
+    val.textContent = modo==='acciones' ? tA.toLocaleString()+' acc.'
+                    : modo==='valor'    ? (tV>=1000?'Bs.'+(tV/1000).toFixed(0)+'k':fmtBs(tV))
+                    :                     (tI>=1000?'Bs.'+(tI/1000).toFixed(0)+'k':fmtBs(tI));
+}
+
+function showTT(mouseEvent, idx) {
+    const a  = distRawData[idx];
+    const tt = document.getElementById('dist-tooltip');
+    if (!tt || !a) return;
+
+    document.getElementById('tt-simbolo').textContent  = a.simbolo;
+    document.getElementById('tt-nombre').textContent   = (a.nombre||'').substring(0,22);
+    document.getElementById('tt-cantidad').textContent = a.cantidad.toLocaleString()+' títulos';
+    document.getElementById('tt-valor').textContent    = fmtBs(a.valor_actual);
+    document.getElementById('tt-pct').textContent      = distPcts[idx].toFixed(2)+'%';
+
+    const wrap = document.getElementById('tt-img-wrap');
+    wrap.innerHTML = '';
+    if (a.imagen_url) {
+        const img = document.createElement('img');
+        img.src = a.imagen_url;
+        img.className = 'w-full h-full object-contain p-1';
+        img.onerror = () => { wrap.innerHTML = `<span class="text-xs font-black text-slate-400">${a.simbolo.substring(0,2)}</span>`; };
+        wrap.appendChild(img);
+    } else {
+        wrap.innerHTML = `<span class="text-xs font-black text-slate-400">${a.simbolo.substring(0,2)}</span>`;
+    }
+
+    tt.style.left = (mouseEvent.clientX + 16) + 'px';
+    tt.style.top  = (mouseEvent.clientY - 30) + 'px';
+    tt.classList.remove('hidden');
+
+    const lbl = document.getElementById('dist-center-label');
+    const val = document.getElementById('dist-center-value');
+    if (lbl) lbl.textContent = a.simbolo;
+    if (val) val.textContent = distPcts[idx].toFixed(1)+'%';
+}
+
+function hideTT() {
+    const tt = document.getElementById('dist-tooltip');
+    if (tt) tt.classList.add('hidden');
+}
+
+// ── Arranque ──
+document.addEventListener('DOMContentLoaded', () => {
+    cargarEvolucion('1m');
+    renderDistribucion();
+});
+
+// Re-render al cambiar tema
+new MutationObserver(() => {
+    cargarEvolucion(periodoActivo);
+    renderDistribucion();
+}).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     MODAL TARJETA COMPARTIBLE
+═══════════════════════════════════════════════════════════════════ -->
+<div id="modal-tarjeta" class="fixed inset-0 z-[200] hidden items-center justify-center bg-slate-900/80 backdrop-blur-md p-4">
+    <div class="relative w-full max-w-sm bg-white dark:bg-slate-900 shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden"
+         id="tarjeta-capture">
+
+        <!-- FONDO degradado dinámico -->
+        <div id="tc-fondo" class="absolute inset-0 opacity-10 pointer-events-none"></div>
+
+        <!-- HEADER MARCA — estilos inline para captura fiel con html2canvas -->
+        <div class="relative border-b border-slate-100 dark:border-slate-800"
+             style="padding:20px 24px 16px;display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span style="background:#2563eb;color:#fff;padding:2px 8px;border-radius:6px;
+                             font-weight:900;font-style:italic;font-size:13px;letter-spacing:-0.03em;
+                             font-family:Arial,sans-serif;line-height:1.4;">GENAROCOIN</span>
+                <span style="font-weight:900;font-size:13px;font-family:Arial,sans-serif;"
+                      class="text-slate-700 dark:text-slate-300">BVC</span>
+            </div>
+            <p id="tc-fecha" style="font-size:10px;font-weight:700;letter-spacing:0.1em;
+                                    font-family:Arial,sans-serif;text-transform:uppercase;"
+               class="text-slate-400"></p>
+        </div>
+
+        <!-- SÍMBOLO + PRECIO -->
+        <div class="relative px-6 py-5">
+            <div class="flex items-start justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div id="tc-img-wrap" class="w-14 h-14 border-2 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden shrink-0 shadow-lg">
+                        <span id="tc-initials" class="font-black text-slate-400 text-sm"></span>
+                    </div>
+                    <div>
+                        <p id="tc-simbolo" class="text-4xl font-black tracking-tighter text-slate-800 dark:text-white leading-none"></p>
+                        <p id="tc-nombre" class="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-wider"></p>
+                    </div>
+                </div>
+                <div class="text-right shrink-0">
+                    <p id="tc-precio" class="text-3xl font-black text-slate-800 dark:text-white leading-none"></p>
+                    <p class="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Último cierre (Bs)</p>
+                    <span id="tc-var-dia" class="text-xs font-black px-2 py-0.5 mt-1 inline-block"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- GRÁFICO CON LÍNEA DE COSTO PROMEDIO -->
+        <div class="relative px-4 pb-2">
+            <div class="bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-700 overflow-hidden shadow-inner" style="height:180px">
+                <canvas id="tc-chart" style="display:block;width:100%;height:180px;"></canvas>
+            </div>
+            <div class="flex items-center gap-4 mt-2 px-1">
+                <div class="flex items-center gap-1.5">
+                    <span class="w-6 h-0.5 bg-blue-500 inline-block"></span>
+                    <span class="text-[9px] font-bold text-slate-400 uppercase">Precio</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="w-6 border-t-2 border-dashed border-amber-500 inline-block"></span>
+                    <span class="text-[9px] font-bold text-slate-400 uppercase">Mi costo prom.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- RENDIMIENTO — % con tamaño adaptativo que nunca desborda -->
+        <div class="px-6 pb-5 pt-3">
+            <div id="tc-rendimiento-card" class="flex items-center justify-between gap-2 border-2 overflow-hidden"
+                 style="padding:16px 20px;min-height:80px;">
+                <div class="shrink-0" style="max-width:45%;">
+                    <p id="tc-rend-label" class="font-black uppercase text-[10px] tracking-widest leading-tight mb-1">Rendimiento de mi posición</p>
+                    <p class="text-[9px] font-bold text-slate-400 uppercase leading-tight">Ganancia/pérdida no realizada</p>
+                </div>
+                <!-- El % usa font-size inline calculado en JS para ajustarse siempre -->
+                <p id="tc-rendimiento-pct"
+                   class="font-black leading-none tracking-tighter text-right shrink-0"
+                   style="font-size:52px;max-width:54%;word-break:break-all;"></p>
+            </div>
+        </div>
+
+        <!-- FOOTER MARCA -->
+        <div class="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 px-6 py-4 border-t border-blue-100 dark:border-blue-900">
+            <div>
+                <p class="text-xs font-black text-slate-700 dark:text-slate-200">Análisis de inversión</p>
+                <p class="text-sm font-black text-blue-600 dark:text-blue-400">@GENAROCOIN</p>
+            </div>
+            <img src="/static/img/image_15b2b3.png"
+                 style="width:48px;height:48px;border-radius:10px;border:2px solid #fff;display:block;"
+                 onerror="this.style.display='none'">
+        </div>
+    </div>
+
+    <!-- Botones fuera de la tarjeta -->
+    <div id="modal-btns" class="mt-4 flex gap-3 w-full max-w-sm">
+        <button onclick="copiarTarjetaPortafolio()"
+            class="flex-1 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2">
+            <i class="fas fa-copy"></i> Copiar Imagen
+        </button>
+        <button onclick="cerrarTarjeta()"
+            class="flex-1 py-3 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-100 hover:text-red-600 transition-all">
+            Cerrar
+        </button>
+    </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+//  TARJETA COMPARTIBLE
+// ══════════════════════════════════════════════════
+let tcChart      = null;
+let tcCargando   = false;   // evita llamadas concurrentes
+
+async function abrirTarjeta(simbolo) {
+    if (tcCargando) return;
+    tcCargando = true;
+
+    // 1. Destruir gráfico anterior ANTES de mostrar el modal
+    if (tcChart) { tcChart.destroy(); tcChart = null; }
+
+    // 2. Mostrar modal y resetear estado visual
+    const modal = document.getElementById('modal-tarjeta');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    // Reset completo de todos los campos para evitar datos residuales
+    const safe = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    safe('tc-simbolo', simbolo);
+    safe('tc-nombre',  'Cargando…');
+    safe('tc-precio',  '—');
+    safe('tc-fecha',   '');
+    safe('tc-var-dia', '');
+    safe('tc-rend-label', 'Rendimiento de mi posición');
+    safe('tc-rendimiento-pct', '…');
+
+    // Reset imagen a iniciales
+    const wrap = document.getElementById('tc-img-wrap');
+    if (wrap) wrap.innerHTML = `<span class="font-black text-slate-400 text-sm">${simbolo.substring(0,2)}</span>`;
+
+    // Limpiar canvas (evita que se vea el gráfico anterior mientras carga)
+    const canvas = document.getElementById('tc-chart');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    try {
+        const res = await fetch(`/api/portafolio/tarjeta/${simbolo}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const d   = await res.json();
+
+        const pos = d.rendimiento >= 0;
+        const hoy = new Date().toLocaleDateString('es-VE', { day:'2-digit', month:'short', year:'numeric' });
+
+        safe('tc-fecha',   hoy.toUpperCase());
+        safe('tc-simbolo', d.simbolo);
+        safe('tc-nombre',  (d.nombre || '').substring(0, 24));
+        safe('tc-precio',  fmtNum(d.precio_actual));
+
+        // Imagen
+        if (d.imagen_url && wrap) {
+            wrap.innerHTML = '';
+            const img = document.createElement('img');
+            img.src = d.imagen_url;
+            img.className = 'w-full h-full object-contain p-1';
+            img.onerror = () => {
+                if (wrap) wrap.innerHTML = `<span class="font-black text-slate-400 text-sm">${d.simbolo.substring(0,2)}</span>`;
+            };
+            wrap.appendChild(img);
+        }
+
+        // Variación diaria
+        const varEl = document.getElementById('tc-var-dia');
+        if (varEl) {
+            varEl.textContent = (d.variacion_dia >= 0 ? '▲ +' : '▼ ') + d.variacion_dia.toFixed(2) + '%';
+            varEl.className   = 'text-xs font-black px-2 py-0.5 mt-1 inline-block ' +
+                (d.variacion_dia >= 0
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400');
+        }
+
+        // Rendimiento card — tamaño de fuente inline para que nunca desborde
+        const rCard = document.getElementById('tc-rendimiento-card');
+        const rLbl  = document.getElementById('tc-rend-label');
+        const rPct  = document.getElementById('tc-rendimiento-pct');
+        if (rCard && rLbl && rPct) {
+            const pctStr = (pos ? '+' : '') + d.rendimiento.toFixed(2) + '%';
+
+            // Calcular font-size proporcional a la longitud — máx 52px, mín 28px
+            const len  = pctStr.length;
+            const size = len <= 6  ? 52
+                       : len <= 7  ? 46
+                       : len <= 8  ? 40
+                       : len <= 9  ? 36
+                       : len <= 11 ? 30 : 26;
+
+            if (pos) {
+                rCard.className = 'flex items-center justify-between gap-2 border-2 overflow-hidden bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700';
+                rCard.style.cssText = 'padding:16px 20px;min-height:80px;';
+                rLbl.className  = 'font-black uppercase text-[10px] tracking-widest leading-tight mb-1 text-green-700 dark:text-green-400';
+                rPct.className  = 'font-black leading-none tracking-tighter text-right shrink-0 text-green-600 dark:text-green-400';
+            } else {
+                rCard.className = 'flex items-center justify-between gap-2 border-2 overflow-hidden bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700';
+                rCard.style.cssText = 'padding:16px 20px;min-height:80px;';
+                rLbl.className  = 'font-black uppercase text-[10px] tracking-widest leading-tight mb-1 text-red-700 dark:text-red-400';
+                rPct.className  = 'font-black leading-none tracking-tighter text-right shrink-0 text-red-600 dark:text-red-400';
+            }
+            rLbl.textContent    = pos ? '📈 Rendimiento de mi posición' : '📉 Rendimiento de mi posición';
+            rPct.textContent    = pctStr;
+            rPct.style.fontSize = size + 'px';
+            rPct.style.maxWidth = '54%';
+            rPct.style.wordBreak = 'break-all';
+        }
+
+        // Fondo degradado
+        const fondo = document.getElementById('tc-fondo');
+        if (fondo) fondo.style.background = pos
+            ? 'linear-gradient(135deg,#22c55e,#10b981)'
+            : 'linear-gradient(135deg,#ef4444,#f97316)';
+
+        // Gráfico — siempre después de que el modal esté visible
+        requestAnimationFrame(() => dibujarGraficoTarjeta(d.historico, d.costo_promedio, pos));
+
+    } catch(e) {
+        safe('tc-nombre', 'Error al cargar datos');
+        safe('tc-rendimiento-pct', '—');
+        console.error('abrirTarjeta error:', e);
+    } finally {
+        tcCargando = false;
+    }
+}
+
+function dibujarGraficoTarjeta(historico, costoProm, positivo) {
+    const canvas = document.getElementById('tc-chart');
+    if (!canvas) return;
+
+    // Destruir gráfico existente
+    if (tcChart) { tcChart.destroy(); tcChart = null; }
+
+    // Últimos 90 puntos (suficiente para ver tendencia sin saturar)
+    const datos   = historico.slice(-90);
+    const fechas  = datos.map(d => d.fecha);
+    const precios = datos.map(d => d.cierre);
+
+    if (!precios.length) return;
+
+    const color    = positivo ? '#3b82f6' : '#ef4444';
+    const colorFill= positivo ? 'rgba(59,130,246,0.12)' : 'rgba(239,68,68,0.10)';
+    const dark     = document.documentElement.classList.contains('dark');
+    const gridC    = dark ? 'rgba(30,41,59,0.8)' : '#f1f5f9';
+    const textC    = dark ? '#64748b' : '#94a3b8';
+
+    whenChartReady(() => {
+        // Double-check destruction in case whenChartReady delayed
+        if (tcChart) { tcChart.destroy(); tcChart = null; }
+
+        tcChart = new Chart(canvas.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: fechas,
+                datasets: [
+                    {
+                        label: 'Precio',
+                        data: precios,
+                        borderColor: color,
+                        backgroundColor: colorFill,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        fill: true,
+                        tension: 0.3,
+                        order: 1,
+                    },
+                    {
+                        label: 'Costo promedio',
+                        data: new Array(precios.length).fill(costoProm),
+                        borderColor: '#f59e0b',
+                        borderWidth: 2,
+                        borderDash: [6, 4],
+                        pointRadius: 0,
+                        fill: false,
+                        tension: 0,
+                        order: 0,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 300 },
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: dark ? '#1e293b' : '#fff',
+                        borderColor: dark ? '#334155' : '#e2e8f0',
+                        borderWidth: 1,
+                        titleColor: textC,
+                        padding: 8,
+                        callbacks: {
+                            label: ctx => ctx.dataset.label + ': Bs.' +
+                                ctx.parsed.y.toLocaleString('es-VE', { minimumFractionDigits: 2 })
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: gridC },
+                        ticks: { color: textC, font: { size: 8 }, maxTicksLimit: 6, maxRotation: 0 }
+                    },
+                    y: {
+                        grid: { color: gridC },
+                        ticks: {
+                            color: textC,
+                            font: { size: 8 },
+                            callback: v => v >= 1e6 ? (v/1e6).toFixed(1)+'M'
+                                         : v >= 1e3 ? (v/1e3).toFixed(0)+'k'
+                                         : v.toFixed(0)
+                        }
+                    }
+                }
+            }
+        });
+    });
+}
+
+function cerrarTarjeta() {
+    const modal = document.getElementById('modal-tarjeta');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    if (tcChart) { tcChart.destroy(); tcChart = null; }
+    tcCargando = false;
+}
+
+async function copiarTarjetaPortafolio() {
+    const tarjeta = document.getElementById('tarjeta-capture');
+    const btns    = document.getElementById('modal-btns');
+
+    // Ocultar botones para la captura
+    btns.style.display = 'none';
+
+    try {
+        // html2canvas via CDN
+        if (typeof html2canvas === 'undefined') {
+            await cargarScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+        }
+        const canvas = await html2canvas(tarjeta, {
+            scale: 3,
+            useCORS: true,
+            allowTaint: false,
+            backgroundColor: null,
+            logging: false,
+            letterRendering: true,
+            foreignObjectRendering: false,
+        });
+        canvas.toBlob(async blob => {
+            try {
+                await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                mostrarFlashTarjeta('✅ Imagen copiada al portapapeles');
+            } catch {
+                // Fallback: descargar
+                const a = document.createElement('a');
+                a.href = canvas.toDataURL('image/png');
+                a.download = `portafolio_${document.getElementById('tc-simbolo').textContent}_${Date.now()}.png`;
+                a.click();
+                mostrarFlashTarjeta('📥 Imagen descargada');
+            }
+        }, 'image/png');
+    } catch(e) {
+        mostrarFlashTarjeta('❌ Error al capturar la tarjeta');
+        console.error(e);
+    } finally {
+        btns.style.display = '';
+    }
+}
+
+function mostrarFlashTarjeta(msg) {
+    const el = document.createElement('div');
+    el.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] bg-slate-900 text-white px-6 py-3 rounded-2xl text-xs font-black shadow-2xl';
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+}
+
+function cargarScript(src) {
+    return new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = src; s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+    });
+}
+
+// Helpers
+function fmtNum(n) {
+    return n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function abrev(n) {
+    if (n >= 1e6) return (n/1e6).toFixed(2) + 'M';
+    if (n >= 1e3) return (n/1e3).toFixed(1) + 'k';
+    return fmtNum(n);
+}
+
+// Cerrar modal al hacer clic fuera
+document.getElementById('modal-tarjeta').addEventListener('click', function(e) {
+    if (e.target === this) cerrarTarjeta();
+});
+</script>
+
+{% endblock %}

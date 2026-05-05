@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Acción - Control de Inversiones{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">
+                    <i class="fas fa-edit text-yellow-600 mr-2"></i>
+                    Editar Acción: {{ accion.simbolo }}
+                </h1>
+                <p class="text-gray-600 mt-1">Modificar los detalles de esta inversión</p>
+            </div>
+            <a href="{{ url_for('portafolio') }}" class="text-purple-600 hover:text-purple-800">
+                <i class="fas fa-arrow-left mr-2"></i>Volver al Portafolio
+            </a>
+        </div>
+
+        <form method="POST" action="{{ url_for('editar_accion', id=accion.id) }}" class="space-y-6" id="formEditar">
+            <!-- Fecha de Compra -->
+            <div>
+                <label for="fecha_compra" class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-calendar-alt mr-2"></i>Fecha de Compra *
+                </label>
+                <input type="date" 
+                       id="fecha_compra" 
+                       name="fecha_compra" 
+                       required
+                       value="{{ accion.fecha_compra }}"
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+            </div>
+
+            <!-- Selector de Acción (Único campo) -->
+            <div>
+                <label for="accion_seleccionada" class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-tag mr-2"></i>Seleccione la Acción *
+                </label>
+                <div class="relative">
+                    <select id="accion_seleccionada" 
+                            name="accion_seleccionada" 
+                            required
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent appearance-none bg-white pr-10 cursor-pointer"
+                            onchange="actualizarInfoAccion()">
+                        <option value="">-- Seleccione una acción --</option>
+                        {% for acc in acciones_disponibles %}
+                        <option value="{{ acc.s }} - {{ acc.n }}"
+                                data-precio="{{ acc.precio }}"
+                                data-variacion="{{ acc.variacion }}"
+                                data-apertura="{{ acc.apertura }}"
+                                data-cantidad="{{ acc.cantidad }}"
+                                data-monto="{{ acc.monto }}"
+                                {% if acc.s == accion.simbolo %}selected{% endif %}>
+                            {{ acc.s }} - {{ acc.n }} 
+                            {% if acc.precio > 0 %}
+                            (Bs. {{ "%.2f"|format(acc.precio) }})
+                            {% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                        <i class="fas fa-chevron-down text-gray-400"></i>
+                    </div>
+                </div>
+                
+                <!-- Información de la acción seleccionada -->
+                <div id="info-accion" class="mt-3">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <p class="text-sm text-blue-700 font-medium">Precio Actual:</p>
+                                <p id="precio-actual" class="text-lg font-bold text-blue-800">Bs. 0.00</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-blue-700 font-medium">Variación Hoy:</p>
+                                <p id="variacion-actual" class="text-lg font-bold">0.00%</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-blue-700 font-medium">Apertura:</p>
+                                <p id="apertura-actual" class="text-lg font-bold text-blue-800">Bs. 0.00</p>
+                            </div>
+                        </div>
+                        <p class="text-xs text-blue-600 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Datos obtenidos de la Bolsa de Valores de Caracas
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cantidad y Precio de Compra -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Cantidad de Acciones -->
+                <div>
+                    <label for="cantidad" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-layer-group mr-2"></i>Cantidad de Acciones *
+                    </label>
+                    <input type="number" 
+                           id="cantidad" 
+                           name="cantidad" 
+                           required
+                           min="1"
+                           step="1"
+                           value="{{ accion.cantidad }}"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                           onchange="calcularMontos()">
+                </div>
+
+                <!-- Precio de Compra -->
+                <div>
+                    <label for="precio_compra" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-money-bill-wave mr-2"></i>Precio de Compra (Bs.) *
+                    </label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-3 text-gray-500">Bs.</span>
+                        <input type="number" 
+                               id="precio_compra" 
+                               name="precio_compra" 
+                               required
+                               min="0"
+                               step="0.01"
+                               value="{{ "%.2f"|format(accion.precio_compra) }}"
+                               class="w-full pl-10 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                               onchange="calcularMontos()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Monto Bruto -->
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <label for="monto_bruto" class="block text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-calculator mr-2"></i>Monto Bruto (Bs.)
+                </label>
+                <div class="relative">
+                    <span class="absolute left-3 top-3 text-gray-500">Bs.</span>
+                    <input type="number" 
+                           id="monto_bruto" 
+                           name="monto_bruto" 
+                           required
+                           readonly
+                           value="{{ "%.2f"|format(accion.monto_bruto) }}"
+                           class="w-full pl-10 px-4 py-3 border border-gray-300 rounded-lg bg-gray-100">
+                </div>
+                <p class="text-sm text-gray-500 mt-1">Calculado automáticamente (Cantidad × Precio de Compra)</p>
+            </div>
+
+            <!-- Impuestos y Comisiones -->
+            <div class="border border-gray-200 rounded-lg p-4">
+                <h3 class="text-lg font-medium text-gray-700 mb-4">
+                    <i class="fas fa-receipt mr-2"></i>Costos Adicionales
+                </h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Derecho de Registro -->
+                    <div>
+                        <label for="derecho_registro" class="block text-sm font-medium text-gray-700 mb-2">
+                            Derecho de Registro (Bs.)
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-3 text-gray-500">Bs.</span>
+                            <input type="number" 
+                                   id="derecho_registro" 
+                                   name="derecho_registro" 
+                                   min="0"
+                                   step="0.01"
+                                   value="{{ "%.2f"|format(accion.derecho_registro) }}"
+                                   class="w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg"
+                                   onchange="calcularMontos()">
+                        </div>
+                    </div>
+
+                    <!-- Comisión -->
+                    <div>
+                        <label for="comision" class="block text-sm font-medium text-gray-700 mb-2">
+                            Comisión (Bs.)
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-3 text-gray-500">Bs.</span>
+                            <input type="number" 
+                                   id="comision" 
+                                   name="comision" 
+                                   min="0"
+                                   step="0.01"
+                                   value="{{ "%.2f"|format(accion.comision) }}"
+                                   class="w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg"
+                                   onchange="calcularMontos()">
+                        </div>
+                    </div>
+
+                    <!-- IVA -->
+                    <div>
+                        <label for="iva" class="block text-sm font-medium text-gray-700 mb-2">
+                            IVA (Bs.)
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-3 text-gray-500">Bs.</span>
+                            <input type="number" 
+                                   id="iva" 
+                                   name="iva" 
+                                   min="0"
+                                   step="0.01"
+                                   value="{{ "%.2f"|format(accion.iva) }}"
+                                   class="w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg"
+                                   onchange="calcularMontos()">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumen Final -->
+            <div class="bg-purple-50 border border-purple-200 rounded-lg p-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-bold text-purple-700">
+                            <i class="fas fa-file-invoice-dollar mr-2"></i>Resumen de la Inversión
+                        </h3>
+                        <p class="text-sm text-purple-600">Incluye todos los costos y comisiones</p>
+                    </div>
+                    <div class="text-right">
+                        <div id="monto-total-display" class="text-3xl font-bold text-purple-700">
+                            Bs. {{ "%.2f"|format(accion.monto_total) }}
+                        </div>
+                        <input type="hidden" id="monto_total" name="monto_total" value="{{ accion.monto_total }}">
+                        <p class="text-sm text-purple-600 mt-1">
+                            Precio promedio: <span id="precio-promedio">
+                                Bs. {{ "%.2f"|format(accion.monto_total / accion.cantidad if accion.cantidad > 0 else 0) }}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones -->
+            <div class="flex justify-end space-x-4 pt-6">
+                <a href="{{ url_for('portafolio') }}" 
+                   class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
+                    Cancelar
+                </a>
+                <button type="submit" 
+                        class="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-bold">
+                    <i class="fas fa-save mr-2"></i>Guardar Cambios
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Información de la Acción -->
+    <div class="bg-blue-50 border border-blue-200 rounded-xl p-6">
+        <h3 class="text-lg font-medium text-blue-700 mb-3">
+            <i class="fas fa-info-circle mr-2"></i>Información de la Inversión
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <p class="text-sm text-blue-600"><strong>Fecha de registro:</strong> {{ accion.fecha_registro.strftime('%d/%m/%Y %H:%M') }}</p>
+                <p class="text-sm text-blue-600"><strong>Acción:</strong> {{ accion.simbolo }} - {{ accion.nombre_accion }}</p>
+                {% if accion.imagen_url %}
+                <p class="text-sm text-blue-600"><strong>Imagen:</strong> 
+                    <a href="{{ accion.imagen_url }}" target="_blank" class="text-blue-700 hover:text-blue-900 underline">
+                        Ver imagen
+                    </a>
+                </p>
+                {% endif %}
+            </div>
+            <div>
+                <p class="text-sm text-blue-600"><strong>Monto bruto original:</strong> Bs. {{ "%.2f"|format(accion.monto_bruto) }}</p>
+                <p class="text-sm text-blue-600"><strong>Monto total original:</strong> Bs. {{ "%.2f"|format(accion.monto_total) }}</p>
+                <p class="text-sm text-blue-600"><strong>Cantidad:</strong> {{ "{:,.0f}".format(accion.cantidad) }} acciones</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Actualizar información de la acción seleccionada
+function actualizarInfoAccion() {
+    const select = document.getElementById('accion_seleccionada');
+    const selectedOption = select.options[select.selectedIndex];
+    
+    if (selectedOption.value) {
+        const precio = selectedOption.getAttribute('data-precio') || '0';
+        const variacion = selectedOption.getAttribute('data-variacion') || '0';
+        const apertura = selectedOption.getAttribute('data-apertura') || '0';
+        
+        // Mostrar información
+        document.getElementById('precio-actual').textContent = 
+            'Bs. ' + parseFloat(precio).toLocaleString('es-VE', {minimumFractionDigits: 2});
+        
+        const variacionNum = parseFloat(variacion);
+        const variacionElem = document.getElementById('variacion-actual');
+        variacionElem.textContent = (variacionNum >= 0 ? '+' : '') + variacionNum.toFixed(2) + '%';
+        variacionElem.className = variacionNum >= 0 ? 'text-lg font-bold text-green-600' : 'text-lg font-bold text-red-600';
+        
+        document.getElementById('apertura-actual').textContent = 
+            'Bs. ' + parseFloat(apertura).toLocaleString('es-VE', {minimumFractionDigits: 2});
+    }
+}
+
+// Calcular todos los montos
+function calcularMontos() {
+    const cantidad = parseFloat(document.getElementById('cantidad').value) || 0;
+    const precio = parseFloat(document.getElementById('precio_compra').value) || 0;
+    
+    // Calcular monto bruto
+    const montoBruto = cantidad * precio;
+    document.getElementById('monto_bruto').value = montoBruto.toFixed(2);
+    
+    // Calcular monto total
+    calcularMontoTotal();
+}
+
+// Calcular monto total
+function calcularMontoTotal() {
+    const montoBruto = parseFloat(document.getElementById('monto_bruto').value) || 0;
+    const derechoRegistro = parseFloat(document.getElementById('derecho_registro').value) || 0;
+    const comision = parseFloat(document.getElementById('comision').value) || 0;
+    const iva = parseFloat(document.getElementById('iva').value) || 0;
+    
+    const montoTotal = montoBruto + derechoRegistro + comision + iva;
+    const cantidad = parseFloat(document.getElementById('cantidad').value) || 1;
+    const precioPromedio = cantidad > 0 ? montoTotal / cantidad : 0;
+    
+    // Actualizar display
+    document.getElementById('monto-total-display').textContent = 
+        'Bs. ' + montoTotal.toLocaleString('es-VE', {minimumFractionDigits: 2});
+    document.getElementById('monto_total').value = montoTotal;
+    document.getElementById('precio-promedio').textContent = 
+        'Bs. ' + precioPromedio.toLocaleString('es-VE', {minimumFractionDigits: 2});
+}
+
+// Inicializar
+document.addEventListener('DOMContentLoaded', function() {
+    // Agregar event listeners
+    document.getElementById('cantidad').addEventListener('input', calcularMontos);
+    document.getElementById('precio_compra').addEventListener('input', calcularMontos);
+    document.getElementById('derecho_registro').addEventListener('input', calcularMontoTotal);
+    document.getElementById('comision').addEventListener('input', calcularMontoTotal);
+    document.getElementById('iva').addEventListener('input', calcularMontoTotal);
+    document.getElementById('accion_seleccionada').addEventListener('change', actualizarInfoAccion);
+    
+    // Mostrar información de la acción seleccionada
+    actualizarInfoAccion();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,633 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 md:p-8 transition-colors duration-500">
+<div class="max-w-7xl mx-auto space-y-8">
+
+    <!-- HEADER -->
+    <div>
+        <div class="flex items-center gap-3 mb-1">
+            <div class="w-3 h-9 bg-gradient-to-b from-purple-500 to-blue-600 rounded-full"></div>
+            <h1 class="text-3xl font-black uppercase italic tracking-tighter text-slate-800 dark:text-white">
+                Análisis <span class="text-purple-600">Predictivo</span>
+            </h1>
+        </div>
+        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em] ml-6">
+            Correlación de activos · Pronóstico de precios · BVC Local
+        </p>
+    </div>
+
+    <!-- ═══════════════════════════════════
+         SECCIÓN 1: ANÁLISIS PREDICTIVO
+    ═══════════════════════════════════ -->
+    <div class="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden">
+
+        <!-- Header de sección -->
+        <div class="px-6 pt-6 pb-4 border-b border-slate-100 dark:border-slate-700 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <p class="text-[9px] font-black text-purple-500 uppercase tracking-[0.3em] mb-1">Fig. 01 · Serie Histórica + Pronóstico</p>
+                <h2 class="text-lg font-black uppercase italic tracking-tight text-slate-800 dark:text-white">
+                    Análisis Predictivo
+                </h2>
+                <p class="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
+                    Tendencia lineal + banda de confianza · Los modelos estiman probabilidades, no certezas
+                </p>
+            </div>
+
+            <!-- Controles -->
+            <div class="flex flex-wrap gap-3 items-end">
+                <div style="min-width:220px;">
+                    <label class="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">Seleccionar Activo</label>
+                    <div class="relative">
+                        <select id="pred-simbolo" onchange="seleccionarActivoPred(this.value)"
+                            class="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-xl font-bold text-slate-800 dark:text-white outline-none border-2 border-slate-200 dark:border-slate-700 focus:border-purple-500 transition-all appearance-none cursor-pointer">
+                            <option value="">Seleccione un activo…</option>
+                            {% for s in simbolos %}
+                            <option value="{{ s.simbolo }}">{{ s.simbolo }} - {{ s.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">▼</div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[9px] font-black text-slate-400 uppercase mb-1">Histórico</label>
+                    <select id="pred-periodo"
+                        class="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white px-3 py-2 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-purple-500">
+                        <option value="30">30 días</option>
+                        <option value="60" selected>60 días</option>
+                        <option value="90">90 días</option>
+                        <option value="180">6 meses</option>
+                        <option value="365">1 año</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[9px] font-black text-slate-400 uppercase mb-1">Horizonte</label>
+                    <select id="pred-horizonte" onchange="toggleFechaPersonalizada()"
+                        class="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white px-3 py-2 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-purple-500">
+                        <option value="10">10 días</option>
+                        <option value="20" selected>20 días</option>
+                        <option value="30">30 días</option>
+                        <option value="45">45 días</option>
+                        <option value="60">60 días</option>
+                        <option value="fecha">📅 Fecha específica…</option>
+                    </select>
+                    <input type="date" id="pred-fecha-objetivo" class="hidden mt-1 w-full px-3 py-2 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-purple-500">
+                </div>
+                <button onclick="cargarPrediccion()"
+                    class="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-md shadow-purple-600/20 flex items-center gap-2">
+                    <i class="fas fa-wand-magic-sparkles"></i> Analizar
+                </button>
+            </div>
+        </div>
+
+        <!-- KPIs de predicción -->
+        <div id="pred-kpis" class="hidden grid grid-cols-2 md:grid-cols-4 gap-4 px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30">
+            <div>
+                <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Precio Actual</p>
+                <p id="kpi-actual" class="text-xl font-black font-mono text-slate-800 dark:text-white">—</p>
+            </div>
+            <div>
+                <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Precio Objetivo</p>
+                <p id="kpi-objetivo" class="text-xl font-black font-mono text-purple-600 dark:text-purple-400">—</p>
+            </div>
+            <div>
+                <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Variación Estimada</p>
+                <p id="kpi-var" class="text-xl font-black font-mono">—</p>
+            </div>
+            <div>
+                <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Tendencia</p>
+                <p id="kpi-tendencia" class="text-xl font-black">—</p>
+            </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="relative p-4" style="min-height:320px;">
+            <div id="pred-loading" class="absolute inset-0 flex items-center justify-center">
+                <div class="text-center text-slate-400">
+                    <i class="fas fa-chart-line text-4xl mb-3 block text-purple-500/40"></i>
+                    <p class="text-[10px] font-black uppercase tracking-widest">Selecciona un activo y presiona Analizar</p>
+                </div>
+            </div>
+            <div id="pred-spinner" class="hidden absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-slate-800/80 z-10">
+                <i class="fas fa-spinner fa-spin text-3xl text-purple-500"></i>
+            </div>
+            <canvas id="chart-pred" class="hidden" height="300"></canvas>
+        </div>
+
+        <!-- Leyenda + disclaimer -->
+        <div class="px-6 pb-5 flex flex-wrap items-center gap-6">
+            <div class="flex items-center gap-2">
+                <span class="w-8 h-0.5 bg-white inline-block border border-slate-300 dark:border-slate-600"></span>
+                <span class="text-[9px] font-bold text-slate-400 uppercase">Histórico</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-8 border-t-2 border-dashed border-red-500 inline-block"></span>
+                <span class="text-[9px] font-bold text-slate-400 uppercase">Pronóstico</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-8 h-3 bg-red-500/20 rounded inline-block border border-red-500/40"></span>
+                <span class="text-[9px] font-bold text-slate-400 uppercase">Intervalo 95%</span>
+            </div>
+            <p class="text-[9px] text-slate-400 italic ml-auto">
+                ⚠ Basado en regresión lineal histórica. No constituye asesoramiento financiero.
+            </p>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════
+         SECCIÓN 2: MATRIZ DE CORRELACIÓN
+    ═══════════════════════════════════ -->
+    <div class="bg-white dark:bg-slate-800 rounded-[2rem] border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden">
+
+        <!-- Header -->
+        <div class="px-6 pt-6 pb-4 border-b border-slate-100 dark:border-slate-700 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <p class="text-[9px] font-black text-teal-500 uppercase tracking-[0.3em] mb-1">Fig. 02 · Matriz de Correlación</p>
+                <h2 class="text-lg font-black uppercase italic tracking-tight text-slate-800 dark:text-white">
+                    Correlación de Activos
+                </h2>
+                <p class="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
+                    Coeficiente de Pearson sobre retornos diarios · +1 = movimiento idéntico, −1 = movimiento inverso
+                </p>
+            </div>
+            <div class="flex flex-wrap gap-3 items-end">
+                <div>
+                    <label class="block text-[9px] font-black text-slate-400 uppercase mb-1">Período</label>
+                    <select id="corr-periodo"
+                        class="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white px-3 py-2 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-teal-500">
+                        <option value="30">30 días</option>
+                        <option value="90" selected>90 días</option>
+                        <option value="180">6 meses</option>
+                        <option value="365">1 año</option>
+                    </select>
+                </div>
+                <button onclick="cargarCorrelacion()"
+                    class="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-md shadow-teal-600/20 flex items-center gap-2">
+                    <i class="fas fa-table-cells"></i> Calcular
+                </button>
+            </div>
+        </div>
+
+        <!-- Selector de símbolos con logos -->
+        <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+            <p class="text-[9px] font-black text-slate-400 uppercase mb-3">Seleccionar activos <span class="font-normal normal-case">(mín. 2, máx. 10)</span></p>
+            <div class="flex flex-wrap gap-2" id="simbolos-chips">
+                {% for s in simbolos %}
+                <button onclick="toggleSimboloCorr('{{ s.simbolo }}', this)"
+                    data-simbolo="{{ s.simbolo }}"
+                    class="chip-simbolo flex items-center gap-1.5 pl-1.5 pr-3 py-1.5 rounded-xl text-[10px] font-black uppercase border-2 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-teal-400 hover:text-teal-600 dark:hover:text-teal-400 transition-all bg-white dark:bg-slate-900/60">
+                    <span class="w-6 h-6 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-700">
+                        {% if tiene_imagen(s.simbolo) %}
+                        <img src="{{ url_for('static', filename='img/acciones/' + s.simbolo + '.png') }}"
+                             class="w-full h-full object-contain p-0.5"
+                             onerror="this.parentElement.innerHTML='<span class=\'text-[8px] font-black text-slate-400\'>{{ s.simbolo[:2] }}</span>'">
+                        {% else %}
+                        <span class="text-[8px] font-black text-slate-400">{{ s.simbolo[:2] }}</span>
+                        {% endif %}
+                    </span>
+                    {{ s.simbolo }}
+                </button>
+                {% endfor %}
+            </div>
+            <p class="text-[9px] text-slate-400 mt-2" id="corr-seleccionados-label">0 seleccionados</p>
+        </div>
+
+        <!-- Heatmap -->
+        <div class="p-6 relative" style="min-height:300px;">
+            <div id="corr-loading" class="absolute inset-0 flex items-center justify-center">
+                <div class="text-center text-slate-400">
+                    <i class="fas fa-table-cells text-4xl mb-3 block text-teal-500/40"></i>
+                    <p class="text-[10px] font-black uppercase tracking-widest">Selecciona activos y presiona Calcular</p>
+                </div>
+            </div>
+            <div id="corr-spinner" class="hidden absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-slate-800/80 z-10">
+                <i class="fas fa-spinner fa-spin text-3xl text-teal-500"></i>
+            </div>
+            <div id="heatmap-container" class="hidden overflow-x-auto"></div>
+        </div>
+
+        <!-- Panel de análisis textual (se genera dinámicamente) -->
+        <div id="corr-analisis" class="hidden px-6 pb-6 border-t border-slate-100 dark:border-slate-700 pt-6">
+            <div class="flex items-center gap-2 mb-4">
+                <div class="w-1.5 h-6 bg-teal-500 rounded-full"></div>
+                <h3 class="text-sm font-black uppercase italic tracking-tight text-slate-800 dark:text-white">Análisis de Correlación</h3>
+                <span id="corr-analisis-periodo" class="text-[9px] bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 px-2 py-0.5 rounded-full font-black uppercase"></span>
+            </div>
+            <div id="corr-analisis-cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+        </div>
+
+        <!-- Escala de color -->
+        <div class="px-6 pb-6 flex items-center gap-4">
+            <div class="flex items-center gap-3 flex-1 max-w-xs">
+                <span class="text-[9px] font-black text-teal-600">−1</span>
+                <div class="flex-1 h-3 rounded-full" style="background:linear-gradient(to right,#0f766e,#134e4a,#1e293b,#7f1d1d,#ef4444)"></div>
+                <span class="text-[9px] font-black text-red-500">+1</span>
+            </div>
+            <div class="flex gap-4 text-[9px] font-bold text-slate-400 uppercase">
+                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm inline-block bg-red-500"></span> Alta correlación positiva</span>
+                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm inline-block bg-teal-600"></span> Alta correlación negativa</span>
+                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-sm inline-block bg-slate-700"></span> Sin correlación</span>
+            </div>
+        </div>
+    </div>
+
+</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════════
+const isDark = () => document.documentElement.classList.contains('dark');
+function fmtBs(v) {
+    return 'Bs. ' + Number(v).toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ANÁLISIS PREDICTIVO
+// ═══════════════════════════════════════════════════════════
+let chartPred    = null;
+let lastPredData = null;
+let imgLogo      = new Image();
+
+const backgroundLogoPlugin = {
+    id: 'backgroundLogo',
+    beforeDraw: (chart) => {
+        if (imgLogo.complete && imgLogo.naturalWidth > 0 && imgLogo.src && !imgLogo.src.endsWith('/')) {
+            try {
+                const { ctx, chartArea: { top, left, width, height } } = chart;
+                const size = Math.min(width, height) * 0.48;
+                ctx.save();
+                ctx.globalAlpha = 0.12;
+                ctx.drawImage(imgLogo, left + (width - size) / 2, top + (height - size) / 2, size, size);
+                ctx.restore();
+            } catch(e) {}
+        }
+    }
+};
+
+function toggleFechaPersonalizada() {
+    const sel   = document.getElementById('pred-horizonte');
+    const input = document.getElementById('pred-fecha-objetivo');
+    if (sel.value === 'fecha') {
+        input.classList.remove('hidden');
+        // Default: 30 días desde hoy
+        const d = new Date();
+        d.setDate(d.getDate() + 30);
+        input.value = d.toISOString().split('T')[0];
+        input.min   = new Date().toISOString().split('T')[0];
+    } else {
+        input.classList.add('hidden');
+    }
+}
+
+function seleccionarActivoPred(simbolo) {
+    if (!simbolo) return;
+    imgLogo = new Image();
+    imgLogo.crossOrigin = 'anonymous';
+    imgLogo.src = `/static/img/acciones/${simbolo}.png`;
+    imgLogo.onerror = () => { imgLogo = new Image(); };
+}
+
+async function cargarPrediccion() {
+    const simbolo     = document.getElementById('pred-simbolo').value;
+    const periodo     = document.getElementById('pred-periodo').value;
+    const horizSel    = document.getElementById('pred-horizonte').value;
+
+    if (!simbolo) { alert('⚠️ Selecciona un activo'); return; }
+
+    // Calcular horizonte en días
+    let horizonte = 20;
+    if (horizSel === 'fecha') {
+        const fechaObj = document.getElementById('pred-fecha-objetivo').value;
+        if (!fechaObj) { alert('⚠️ Selecciona una fecha objetivo'); return; }
+        const hoy    = new Date();
+        hoy.setHours(0,0,0,0);
+        const target = new Date(fechaObj + 'T00:00:00');
+        horizonte = Math.max(1, Math.round((target - hoy) / 86400000));
+    } else {
+        horizonte = parseInt(horizSel);
+    }
+
+    document.getElementById('pred-loading').classList.add('hidden');
+    document.getElementById('pred-spinner').classList.remove('hidden');
+    document.getElementById('chart-pred').classList.add('hidden');
+    document.getElementById('pred-kpis').classList.add('hidden');
+
+    try {
+        const res  = await fetch(`/api/prediccion?simbolo=${simbolo}&periodo=${periodo}&horizonte=${horizonte}`);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        lastPredData = data;
+
+        // KPIs
+        const varPct = data.precio_actual > 0
+            ? (data.precio_objetivo - data.precio_actual) / data.precio_actual * 100 : 0;
+        const pos = data.slope >= 0;
+        document.getElementById('kpi-actual').textContent    = fmtBs(data.precio_actual);
+        document.getElementById('kpi-objetivo').textContent  = fmtBs(data.precio_objetivo);
+        document.getElementById('kpi-var').textContent       = (varPct>=0?'+':'') + varPct.toFixed(2) + '%';
+        document.getElementById('kpi-var').className         = 'text-xl font-black font-mono ' +
+            (varPct>=0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400');
+        document.getElementById('kpi-tendencia').textContent = pos ? '📈 Alcista' : '📉 Bajista';
+        document.getElementById('kpi-tendencia').className   = 'text-xl font-black ' +
+            (pos ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400');
+        document.getElementById('pred-kpis').classList.remove('hidden');
+
+        // Gráfico
+        const canvas = document.getElementById('chart-pred');
+        canvas.classList.remove('hidden');
+        if (chartPred) { chartPred.destroy(); chartPred = null; }
+
+        const dark   = isDark();
+        const tc     = dark ? '#94a3b8' : '#64748b';
+        const gc     = dark ? 'rgba(30,41,59,0.5)' : '#f1f5f9';
+        const bgTT   = dark ? '#0f172a' : '#fff';
+        const nHist  = data.fechas_hist.length;
+        const todasFechas  = [...data.fechas_hist, ...data.fechas_fut];
+        const histData     = [...data.precios_hist, ...new Array(data.fechas_fut.length).fill(null)];
+        const emaData      = [...data.ema_hist,     ...new Array(data.fechas_fut.length).fill(null)];
+        const forecastData = [...new Array(nHist-1).fill(null), data.precios_hist[nHist-1], ...data.forecast];
+        const bandaSupData = [...new Array(nHist-1).fill(null), data.precios_hist[nHist-1], ...data.banda_sup];
+        const bandaInfData = [...new Array(nHist-1).fill(null), data.precios_hist[nHist-1], ...data.banda_inf];
+
+        chartPred = new Chart(canvas.getContext('2d'), {
+            type: 'line',
+            plugins: [backgroundLogoPlugin],
+            data: {
+                labels: todasFechas,
+                datasets: [
+                    { label:'Banda sup.', data:bandaSupData, borderColor:'transparent',
+                      backgroundColor:'rgba(239,68,68,0.15)', fill:'+1', pointRadius:0, tension:0.3, order:3 },
+                    { label:'Banda inf.', data:bandaInfData, borderColor:'transparent',
+                      backgroundColor:'rgba(239,68,68,0.15)', fill:false, pointRadius:0, tension:0.3, order:4 },
+                    { label:'Histórico', data:histData, borderColor: dark?'#e2e8f0':'#334155',
+                      backgroundColor:'transparent', borderWidth:2, pointRadius:0, pointHoverRadius:5,
+                      fill:false, tension:0.3, spanGaps:false, order:1 },
+                    { label:'EMA', data:emaData, borderColor:'#f59e0b', borderWidth:1.5,
+                      borderDash:[4,3], pointRadius:0, fill:false, tension:0.3, spanGaps:false, order:2 },
+                    { label:'Pronóstico', data:forecastData, borderColor:'#ef4444', borderWidth:2,
+                      borderDash:[6,3], pointRadius:0, pointHoverRadius:5, fill:false, tension:0.3,
+                      spanGaps:false, order:0 },
+                ]
+            },
+            options: {
+                responsive:true, maintainAspectRatio:false,
+                interaction: { mode:'index', intersect:false },
+                plugins: {
+                    legend: { display:true, position:'bottom',
+                        labels: { color:tc, font:{size:9,weight:'bold'}, usePointStyle:true,
+                                  filter: item => !['Banda sup.','Banda inf.'].includes(item.text) }
+                    },
+                    tooltip: {
+                        backgroundColor:bgTT, borderColor:dark?'#334155':'#e2e8f0',
+                        borderWidth:1, titleColor:tc, padding:10,
+                        callbacks: {
+                            label: ctx => {
+                                if (['Banda sup.','Banda inf.'].includes(ctx.dataset.label)) return null;
+                                if (ctx.parsed.y === null) return null;
+                                return ` ${ctx.dataset.label}: Bs. ${ctx.parsed.y.toLocaleString('es-VE',{minimumFractionDigits:2})}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { grid:{color:gc}, ticks:{color:tc, font:{size:8}, maxTicksLimit:10, maxRotation:0} },
+                    y: { grid:{color:gc}, ticks:{color:tc, font:{size:9},
+                         callback: v => v>=1e6?(v/1e6).toFixed(1)+'M' : v>=1e3?(v/1e3).toFixed(0)+'k' : v.toFixed(0)} }
+                }
+            }
+        });
+
+    } catch(e) {
+        const ld = document.getElementById('pred-loading');
+        ld.classList.remove('hidden');
+        ld.querySelector('p').textContent = '❌ ' + e.message;
+        console.error('cargarPrediccion error:', e);
+    } finally {
+        document.getElementById('pred-spinner').classList.add('hidden');
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MATRIZ DE CORRELACIÓN (HEATMAP SVG)
+// ═══════════════════════════════════════════════════════════
+const simbolosSelCorr = new Set();
+
+function toggleSimboloCorr(sym, el) {
+    if (simbolosSelCorr.has(sym)) {
+        simbolosSelCorr.delete(sym);
+        el.classList.remove('border-teal-400','text-teal-600','bg-teal-50','dark:bg-teal-900/20');
+        el.classList.add('border-slate-200','dark:border-slate-700','text-slate-500','dark:text-slate-400');
+    } else {
+        if (simbolosSelCorr.size >= 10) { alert('Máximo 10 activos'); return; }
+        simbolosSelCorr.add(sym);
+        el.classList.add('border-teal-400','text-teal-600','bg-teal-50','dark:bg-teal-900/20');
+        el.classList.remove('border-slate-200','dark:border-slate-700','text-slate-500','dark:text-slate-400');
+    }
+    document.getElementById('corr-seleccionados-label').textContent =
+        `${simbolosSelCorr.size} seleccionado${simbolosSelCorr.size!==1?'s':''}`;
+}
+
+async function cargarCorrelacion() {
+    if (simbolosSelCorr.size < 2) { alert('⚠️ Selecciona al menos 2 activos'); return; }
+    const periodo = document.getElementById('corr-periodo').value;
+    const simsStr = [...simbolosSelCorr].join(',');
+
+    document.getElementById('corr-loading').classList.add('hidden');
+    document.getElementById('corr-spinner').classList.remove('hidden');
+    document.getElementById('heatmap-container').classList.add('hidden');
+
+    try {
+        const res  = await fetch(`/api/correlacion?simbolos=${simsStr}&periodo=${periodo}`);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        renderHeatmap(data.labels, data.matrix);
+        document.getElementById('heatmap-container').classList.remove('hidden');
+    } catch(e) {
+        const ld = document.getElementById('corr-loading');
+        ld.classList.remove('hidden');
+        ld.querySelector('p').textContent = '❌ ' + e.message;
+        console.error('cargarCorrelacion error:', e);
+    } finally {
+        document.getElementById('corr-spinner').classList.add('hidden');
+    }
+}
+
+function corrColor(v) {
+    if (v >= 0) {
+        const t = v;
+        return `rgb(${Math.round(30+t*209)},${Math.round(41+t*27)},${Math.round(59+t*9)})`;
+    } else {
+        const t = -v;
+        return `rgb(${Math.round(30-t*15)},${Math.round(41+t*77)},${Math.round(59+t*51)})`;
+    }
+}
+
+function renderHeatmap(labels, matrix) {
+    const n    = labels.length;
+    const cell = Math.min(Math.floor(560 / (n + 1)), 68);
+    // Reservar más espacio superior para imágenes + texto en cabecera
+    const imgSize  = Math.min(cell - 8, 36);
+    const lblH     = imgSize + 18;   // alto del header de columna (imagen + texto)
+    const lPad     = 64;             // ancho del label de fila
+    const W        = lPad + n * cell + 10;
+    const H        = lblH + 8 + n * cell + 10;
+    const tc       = isDark() ? '#94a3b8' : '#475569';
+    const darkBg   = isDark() ? '#0f172a' : '#f8fafc';
+
+    // Construimos HTML en lugar de SVG puro para poder usar <img>
+    // Usamos una tabla con celdas absolutamente posicionadas vía CSS grid
+    let html = `
+    <div style="overflow-x:auto;">
+    <div style="position:relative;width:${W}px;height:${H}px;font-family:Arial,sans-serif;">`;
+
+    // ── Cabecera de columnas: imagen + símbolo ──
+    labels.forEach((lbl, j) => {
+        const x   = lPad + j * cell;
+        const cx  = x + cell / 2;
+        const imgX = cx - imgSize / 2;
+        html += `
+        <div style="position:absolute;left:${imgX}px;top:4px;width:${imgSize}px;text-align:center;">
+            <div style="width:${imgSize}px;height:${imgSize}px;border-radius:8px;overflow:hidden;
+                        background:#1e293b;border:1px solid #334155;display:flex;align-items:center;justify-content:center;margin:0 auto 3px;">
+                <img src="/static/img/acciones/${lbl}.png"
+                     style="width:100%;height:100%;object-fit:contain;padding:3px;"
+                     onerror="this.style.display='none';this.nextSibling.style.display='block'">
+                <span style="display:none;font-size:8px;font-weight:900;color:#94a3b8;">${lbl.substring(0,3)}</span>
+            </div>
+            <div style="font-size:9px;font-weight:900;color:${tc};letter-spacing:0.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:${cell-4}px;margin:0 auto;">${lbl}</div>
+        </div>`;
+    });
+
+    // ── Filas: label + celdas ──
+    labels.forEach((lbl, i) => {
+        const cy = lblH + 8 + i * cell;
+        // Label de fila (imagen + texto)
+        const imgY = cy + (cell - imgSize) / 2;
+        html += `
+        <div style="position:absolute;left:0;top:${imgY}px;width:${lPad - 4}px;display:flex;align-items:center;gap:4px;justify-content:flex-end;">
+            <div style="font-size:9px;font-weight:900;color:${tc};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:${lPad - imgSize - 10}px;">${lbl}</div>
+            <div style="width:${imgSize - 4}px;height:${imgSize - 4}px;border-radius:6px;overflow:hidden;background:#1e293b;border:1px solid #334155;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <img src="/static/img/acciones/${lbl}.png"
+                     style="width:100%;height:100%;object-fit:contain;padding:2px;"
+                     onerror="this.style.display='none';this.nextSibling.style.display='block'">
+                <span style="display:none;font-size:7px;font-weight:900;color:#94a3b8;">${lbl.substring(0,2)}</span>
+            </div>
+        </div>`;
+
+        // Celdas de correlación
+        matrix[i].forEach((val, j) => {
+            const x    = lPad + j * cell;
+            const col  = corrColor(val);
+            const fs   = cell > 55 ? 13 : 10;
+            const vStr = val.toFixed(2);
+            const isDiag = i === j;
+            html += `
+            <div style="position:absolute;left:${x+2}px;top:${cy+2}px;width:${cell-4}px;height:${cell-4}px;
+                        border-radius:8px;background:${col};border:2px solid ${darkBg};
+                        display:flex;align-items:center;justify-content:center;cursor:default;"
+                 title="${labels[i]} vs ${labels[j]}: ${vStr}">
+                <span style="font-size:${fs}px;font-weight:900;color:#fff;opacity:${isDiag?'0.5':'0.92'};">${vStr}</span>
+            </div>`;
+        });
+    });
+
+    html += `</div></div>`;
+    document.getElementById('heatmap-container').innerHTML = html;
+}
+
+// ── Interpretación textual de la matriz ──
+function generarAnalisisTexto(labels, matrix, periodoLabel) {
+    const container = document.getElementById('corr-analisis-cards');
+    const analisisEl = document.getElementById('corr-analisis');
+    document.getElementById('corr-analisis-periodo').textContent = periodoLabel;
+
+    // Generar todos los pares únicos (i < j)
+    const pares = [];
+    for (let i = 0; i < labels.length; i++) {
+        for (let j = i + 1; j < labels.length; j++) {
+            pares.push({ a: labels[i], b: labels[j], v: matrix[i][j] });
+        }
+    }
+
+    // Ordenar por valor absoluto descendente
+    pares.sort((x, y) => Math.abs(y.v) - Math.abs(x.v));
+
+    function interpreta(v) {
+        const abs = Math.abs(v);
+        const dir = v > 0 ? 'positiva' : 'negativa';
+        if (abs >= 0.8) return { nivel:'Muy alta', dir, color: v>0?'red':'teal', texto: v>0
+            ? `Se mueven casi en perfecta sincronía. Diversificar entre estos dos activos aporta poco beneficio de reducción de riesgo.`
+            : `Se mueven en direcciones opuestas con gran consistencia. Combinar ambos puede reducir significativamente la volatilidad de la cartera.` };
+        if (abs >= 0.6) return { nivel:'Alta', dir, color: v>0?'red':'teal', texto: v>0
+            ? `Existe una tendencia clara de moverse juntos. Sectores o factores macroeconómicos similares los afectan.`
+            : `Tendencia clara a moverse en sentidos contrarios. Útil para cobertura (hedge) dentro de la cartera.` };
+        if (abs >= 0.4) return { nivel:'Moderada', dir, color: v>0?'amber':'blue', texto: v>0
+            ? `Cierta relación positiva, pero con ruido. El comportamiento conjunto no es del todo predecible.`
+            : `Cierta tendencia inversa. Puede ofrecer algo de protección en caídas generales del mercado.` };
+        if (abs >= 0.2) return { nivel:'Débil', dir, color:'slate', texto:
+            `La relación entre estos activos es tenue. Factores idiosincráticos dominan sobre los comunes.` };
+        return { nivel:'Nula / Sin relación', dir:'sin dirección', color:'slate', texto:
+            `No existe correlación estadísticamente relevante. Ambos activos se comportan de forma prácticamente independiente.` };
+    }
+
+    const colorMap = {
+        red:   { bg:'bg-red-50 dark:bg-red-900/20', border:'border-red-200 dark:border-red-800', badge:'bg-red-500', text:'text-red-700 dark:text-red-400' },
+        teal:  { bg:'bg-teal-50 dark:bg-teal-900/20', border:'border-teal-200 dark:border-teal-800', badge:'bg-teal-600', text:'text-teal-700 dark:text-teal-400' },
+        amber: { bg:'bg-amber-50 dark:bg-amber-900/20', border:'border-amber-200 dark:border-amber-800', badge:'bg-amber-500', text:'text-amber-700 dark:text-amber-400' },
+        blue:  { bg:'bg-blue-50 dark:bg-blue-900/20', border:'border-blue-200 dark:border-blue-800', badge:'bg-blue-600', text:'text-blue-700 dark:text-blue-400' },
+        slate: { bg:'bg-slate-50 dark:bg-slate-900/30', border:'border-slate-200 dark:border-slate-700', badge:'bg-slate-500', text:'text-slate-600 dark:text-slate-400' },
+    };
+
+    container.innerHTML = pares.map(p => {
+        const info = interpreta(p.v);
+        const cm   = colorMap[info.color];
+        const sign = p.v >= 0 ? '+' : '';
+        return `
+        <div class="rounded-2xl border ${cm.bg} ${cm.border} p-4">
+            <div class="flex items-start justify-between gap-3 mb-3">
+                <div class="flex items-center gap-2">
+                    <!-- Par de logos -->
+                    <div class="flex -space-x-2">
+                        <div class="w-8 h-8 rounded-xl border-2 border-white dark:border-slate-800 bg-slate-100 dark:bg-slate-900 overflow-hidden flex items-center justify-center z-10">
+                            <img src="/static/img/acciones/${p.a}.png"
+                                 class="w-full h-full object-contain p-0.5"
+                                 onerror="this.style.display='none';this.parentElement.innerHTML='<span style=\\"font-size:8px;font-weight:900;color:#94a3b8;\\">${p.a.substring(0,2)}</span>'">
+                        </div>
+                        <div class="w-8 h-8 rounded-xl border-2 border-white dark:border-slate-800 bg-slate-100 dark:bg-slate-900 overflow-hidden flex items-center justify-center">
+                            <img src="/static/img/acciones/${p.b}.png"
+                                 class="w-full h-full object-contain p-0.5"
+                                 onerror="this.style.display='none';this.parentElement.innerHTML='<span style=\\"font-size:8px;font-weight:900;color:#94a3b8;\\">${p.b.substring(0,2)}</span>'">
+                        </div>
+                    </div>
+                    <div>
+                        <p class="font-black text-sm text-slate-800 dark:text-white leading-none">${p.a} <span class="text-slate-400 font-normal">·</span> ${p.b}</p>
+                        <p class="text-[9px] font-bold ${cm.text} uppercase mt-0.5">${info.nivel} ${info.dir}</p>
+                    </div>
+                </div>
+                <div class="shrink-0">
+                    <span class="text-2xl font-black font-mono ${cm.text}">${sign}${p.v.toFixed(2)}</span>
+                </div>
+            </div>
+            <!-- Barra de correlación -->
+            <div class="relative h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden mb-3">
+                <div class="absolute top-0 h-full rounded-full ${cm.badge}"
+                     style="left:50%;width:${Math.abs(p.v)*50}%;${p.v<0?'transform:translateX(-100%);':''}"></div>
+                <div class="absolute top-0 left-1/2 w-px h-full bg-slate-400 dark:bg-slate-500"></div>
+            </div>
+            <p class="text-[10px] text-slate-600 dark:text-slate-400 leading-relaxed">${info.texto}</p>
+        </div>`;
+    }).join('');
+
+    analisisEl.classList.remove('hidden');
+}
+
+// Re-render al cambiar tema
+new MutationObserver(() => {
+    if (lastPredData) cargarPrediccion();
+    if (!document.getElementById('heatmap-container').classList.contains('hidden') && simbolosSelCorr.size >= 2) cargarCorrelacion();
+}).observe(document.documentElement, { attributes:true, attributeFilter:['class'] });
+</script>
+
+{% endblock %}

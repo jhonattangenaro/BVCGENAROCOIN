@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-50 dark:bg-slate-900 p-4 md:p-8">
+    
+    <!-- Cabecera -->
+    <div class="max-w-7xl mx-auto flex justify-between items-center mb-8">
+        <h1 class="text-3xl font-black uppercase italic">Panel de Mercado</h1>
+        <form action="/" method="GET">
+            <select name="fecha" onchange="this.form.submit()" class="bg-white dark:bg-slate-800 p-3 rounded-2xl shadow font-bold outline-none">
+                {% for f in lista_fechas %}
+                <option value="{{f}}" {% if f==fecha_actual %}selected{% endif %}>{{f}}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    <!-- Información -->
+    <div class="max-w-7xl mx-auto mb-6 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-2xl">
+        <p class="text-blue-700 dark:text-blue-300 font-bold text-sm">
+            📅 Fecha: <span class="underline">{{ fecha_actual }}</span> | 
+            📊 Acciones: <span class="underline">{{ acciones|length }}</span>
+        </p>
+    </div>
+
+    <!-- 4 Columnas principales -->
+    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        
+        <!-- Más Ganadoras -->
+        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow">
+            <h3 class="text-green-600 font-black uppercase mb-4">📈 Más Ganadoras</h3>
+            <div class="space-y-3">
+                {% if top_ganadoras %}
+                    {% for acc in top_ganadoras %}
+                    <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                        <div>
+                            <span class="font-bold text-sm">{{ acc.simbolo }}</span>
+                            <p class="text-xs text-slate-500">{{ acc.nombre[:15] }}{% if acc.nombre|length > 15 %}...{% endif %}</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-bold text-sm">Bs. {{ format_spanish(acc.cierre, 2) }}</span>
+                            <p class="text-xs font-bold text-green-600">+{{ "%.2f"|format(acc.variacion) }}%</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-gray-500 text-center py-4">Sin datos</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Más Perdedoras -->
+        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow">
+            <h3 class="text-red-600 font-black uppercase mb-4">📉 Más Perdedoras</h3>
+            <div class="space-y-3">
+                {% if top_perdedoras %}
+                    {% for acc in top_perdedoras %}
+                    <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                        <div>
+                            <span class="font-bold text-sm">{{ acc.simbolo }}</span>
+                            <p class="text-xs text-slate-500">{{ acc.nombre[:15] }}{% if acc.nombre|length > 15 %}...{% endif %}</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-bold text-sm">Bs. {{ format_spanish(acc.cierre, 2) }}</span>
+                            <p class="text-xs font-bold text-red-600">{{ "%.2f"|format(acc.variacion) }}%</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-gray-500 text-center py-4">Sin datos</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Más Negociadas -->
+        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow">
+            <h3 class="text-blue-600 font-black uppercase mb-4">💎 Más Negociadas</h3>
+            <div class="space-y-3">
+                {% if top_mas_neg %}
+                    {% for acc in top_mas_neg %}
+                    <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                        <div>
+                            <span class="font-bold text-sm">{{ acc.simbolo }}</span>
+                            <p class="text-xs text-slate-500">{{ acc.nombre[:20] }}{% if acc.nombre|length > 20 %}...{% endif %}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] text-slate-400 uppercase font-bold">Monto Negociado</p>
+                            <span class="font-bold text-base text-blue-600">Bs. {{ format_spanish(acc.volumen, 2) }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-gray-500 text-center py-4">Sin datos</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Menos Negociadas -->
+        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow">
+            <h3 class="text-orange-600 font-black uppercase mb-4">🧊 Menos Negociadas</h3>
+            <div class="space-y-3">
+                {% if top_menos_neg %}
+                    {% for acc in top_menos_neg %}
+                    <div class="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                        <div>
+                            <span class="font-bold text-sm">{{ acc.simbolo }}</span>
+                            <p class="text-xs text-slate-500">{{ acc.nombre[:20] }}{% if acc.nombre|length > 20 %}...{% endif %}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] text-slate-400 uppercase font-bold">Monto Negociado</p>
+                            <span class="font-bold text-base text-orange-600">Bs. {{ format_spanish(acc.volumen, 2) }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-gray-500 text-center py-4">Sin datos</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Botones de acción -->
+    <div class="max-w-7xl mx-auto p-4 bg-slate-100 dark:bg-slate-800 rounded-2xl text-center mb-8">
+        <h3 class="font-bold mb-4">🔧 Herramientas de Depuración</h3>
+        <div class="space-x-4">
+            <a href="/debug_directo" class="inline-block bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm">
+                🔍 Ver Datos en BD
+            </a>
+            <a href="/cargar_masivo" class="inline-block bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm">
+                📁 Reprocesar Archivos
+            </a>
+            <button onclick="location.reload()" class="inline-block bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm">
+                🔄 Recargar Página
+            </button>
+        </div>
+    </div>
+
+    <!-- Debug info MEJORADO -->
+    <div class="max-w-7xl mx-auto p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-2xl">
+        <h4 class="font-bold text-yellow-700 dark:text-yellow-300 mb-2">🔍 Información de Depuración</h4>
+        <div class="text-sm text-yellow-600 dark:text-yellow-400">
+            <p><strong>Verificación de Formateo:</strong></p>
+            {% if top_mas_neg %}
+                {% for acc in top_mas_neg[:3] %}
+                <p>• {{ acc.simbolo }}: Valor BD = {{ acc.volumen }} → Formateado = {{ format_spanish(acc.volumen, 2) }}</p>
+                {% endfor %}
+            {% endif %}
+            <p class="mt-2 text-xs"><strong>Valores esperados (según BVC):</strong></p>
+            <p class="text-xs">• PGR: ~11.548.986,72 | RST: ~8.292.782,82 | TPG: ~1.173.175,69</p>
+            <p class="text-xs text-red-600 font-bold mt-2">⚠️ Si los valores son 1000x menores, hay error en extracción de datos</p>
+        </div>
+    </div>
+
+</div>
+
+<script>
+// Debug en consola del navegador
+console.log("📊 BVCLocal - Página cargada");
+console.log("Fecha: {{ fecha_actual }}");
+console.log("Total acciones: {{ acciones|length }}");
+
+// Verificar valores de negociación
+{% if top_mas_neg %}
+console.log("\n💎 Top más negociadas:");
+{% for acc in top_mas_neg %}
+console.log("  {{ acc.simbolo }}: RAW={{ acc.volumen }} → FORMATEADO={{ format_spanish(acc.volumen, 2) }}");
+{% endfor %}
+{% endif %}
+
+{% if top_menos_neg %}
+console.log("\n🧊 Top menos negociadas:");
+{% for acc in top_menos_neg %}
+console.log("  {{ acc.simbolo }}: RAW={{ acc.volumen }} → FORMATEADO={{ format_spanish(acc.volumen, 2) }}");
+{% endfor %}
+{% endif %}
+</script>
+
+{% endblock %}

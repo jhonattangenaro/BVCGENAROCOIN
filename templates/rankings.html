@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block content %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="min-h-screen bg-slate-50 dark:bg-slate-900 p-2 md:p-6">
+    <div class="max-w-7xl mx-auto mb-10 text-center">
+        <h1 class="text-4xl font-black uppercase italic text-slate-800 dark:text-white tracking-tighter">🏆 Rankings Globales</h1>
+        <p class="text-blue-600 font-bold text-[10px] uppercase tracking-widest mt-2">Sincronizado con Terminal</p>
+    </div>
+
+    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {% for key, datos in rankings.items() %}
+        <div id="card-{{ key }}" class="bg-white dark:bg-slate-800 p-6 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-700 relative">
+            
+            <div class="flex justify-between items-center mb-6">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg">
+                        <i class="fas fa-trophy text-xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-black uppercase italic text-slate-800 dark:text-white leading-none">{{ datos.titulo }}</h2>
+                        <p class="text-[9px] text-slate-400 font-black uppercase mt-1">{{ datos.rango }}</p>
+                    </div>
+                </div>
+                <!-- Botón compartir → abre modal idéntico a consulta -->
+                <button onclick="abrirModalRanking('card-{{ key }}', '{{ datos.titulo }}', '{{ datos.rango }}')" class="p-3 bg-slate-100 dark:bg-slate-700 hover:bg-blue-600 hover:text-white rounded-2xl transition-all group">
+                    <i class="fas fa-share-alt text-slate-500 group-hover:text-white"></i>
+                </button>
+            </div>
+            
+            <div class="mb-8 h-[300px] bg-slate-50 dark:bg-slate-900/50 rounded-[2rem] p-4 border border-slate-100 dark:border-slate-700">
+                <canvas id="chart_{{ key }}"></canvas>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% set secciones = [
+                    {'titulo': 'Positivas', 'color': 'green', 'icono': '🚀', 'data': datos.ganadoras, 'val_key': 'rendimiento'},
+                    {'titulo': 'Negativas', 'color': 'red',   'icono': '📉', 'data': datos.perdedoras, 'val_key': 'rendimiento'},
+                    {'titulo': 'Más Negoc.', 'color': 'blue', 'icono': '💎', 'data': datos.mas_negociadas, 'val_key': 'volumen'},
+                    {'titulo': 'Menos Negoc.', 'color': 'slate', 'icono': '🧊', 'data': datos.menos_negociadas, 'val_key': 'volumen'}
+                ] %}
+
+                {% for seccion in secciones %}
+                <div class="bg-{{ seccion.color }}-50/50 dark:bg-{{ seccion.color }}-900/10 p-4 rounded-3xl border border-{{ seccion.color }}-100 dark:border-{{ seccion.color }}-900/30">
+                    <p class="text-[10px] font-black text-{{ seccion.color }}-600 uppercase mb-3 flex items-center gap-2">{{ seccion.icono }} {{ seccion.titulo }}</p>
+                    <div class="space-y-3 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar">
+                        {% for item in seccion.data %}
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-2">
+                                {% if tiene_imagen(item.simbolo) %}
+                                    <img src="{{ url_for('static', filename='img/acciones/' + item.simbolo + '.png') }}" class="w-6 h-6 rounded-full object-contain bg-white shadow-sm border border-slate-100">
+                                {% else %}
+                                    <div class="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[8px] font-bold text-slate-500">{{ item.simbolo[:2] }}</div>
+                                {% endif %}
+                                <span class="text-[11px] font-black text-slate-700 dark:text-slate-300">{{ item.simbolo }}</span>
+                            </div>
+                            <span class="text-[11px] font-black text-{{ seccion.color }}-600">
+                                {% if seccion.val_key == 'rendimiento' %}
+                                    {{ '+' if (item.rendimiento or item.variacion or 0) > 0 }}{{ format_spanish(item.rendimiento if item.rendimiento is defined else item.variacion) }}%
+                                {% else %}
+                                    Bs. {{ format_spanish(item.volumen_total if item.volumen_total is defined else item.volumen, 0) }}
+                                {% endif %}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <script>
+            (function() {
+                const ctx = document.getElementById('chart_{{ key }}').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: {{ datos.labels | tojson | safe }},
+                        datasets: [{
+                            data: {{ datos.valores | tojson | safe }},
+                            backgroundColor: {{ datos.valores | tojson | safe }}.map(v => v >= 0 ? 'rgba(34, 197, 94, 0.8)' : 'rgba(239, 68, 68, 0.8)'),
+                            borderColor: {{ datos.valores | tojson | safe }}.map(v => v >= 0 ? '#16a34a' : '#dc2626'),
+                            borderWidth: 1,
+                            borderRadius: 8,
+                            barThickness: 15
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        maintainAspectRatio: false,
+                        responsive: true,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => ` Variación: ${context.raw}%`
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                                ticks: { 
+                                    font: { size: 10, weight: '600' },
+                                    color: '#94a3b8',
+                                    callback: (value) => value + '%'
+                                }
+                            },
+                            y: {
+                                grid: { display: false },
+                                ticks: {
+                                    font: { size: 11, weight: '900' },
+                                    color: document.documentElement.classList.contains('dark') ? '#f1f5f9' : '#1e293b'
+                                }
+                            }
+                        }
+                    }
+                });
+            })();
+        </script>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ============================================================
+     MODAL DE TARJETA (mismo patrón que consulta.html)
+     ============================================================ -->
+<div id="modalRanking" class="fixed inset-0 bg-slate-900/95 backdrop-blur-md z-[100] hidden flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white dark:bg-slate-800 w-full max-w-2xl rounded-[2.5rem] overflow-hidden shadow-2xl scale-up border border-slate-200 dark:border-slate-700">
+
+        <!-- Área capturada por html2canvas -->
+        <div id="areaCaptura" class="bg-white p-8">
+
+            <!-- Header branding (idéntico a consulta) -->
+            <div class="flex items-center justify-between mb-8 border-b border-slate-200 pb-6">
+                <div class="flex items-center gap-4">
+                    <img src="{{ url_for('static', filename='img/PERSONA_BASE_1.png') }}" class="w-16 h-16 rounded-full border-2 border-blue-500 shadow-sm">
+                    <div>
+                        <h3 class="font-black text-slate-800 leading-none text-2xl">GENAROCOIN</h3>
+                        <p class="text-xs text-blue-500 font-bold uppercase mt-1 tracking-widest">Análisis BVC</p>
+                    </div>
+                </div>
+                <p id="tFecha" class="text-xs text-slate-500 font-black uppercase">--</p>
+            </div>
+
+            <!-- Título dinámico del ranking -->
+            <div class="flex items-center justify-between mb-5">
+                <div>
+                    <h2 id="tTituloRanking" class="text-2xl font-black text-slate-800 uppercase tracking-tighter">🏆 Ranking</h2>
+                    <p id="tRangoRanking" class="text-[10px] text-slate-400 font-black uppercase mt-1">--</p>
+                </div>
+            </div>
+
+            <!-- Imagen del ranking capturada -->
+            <div class="w-full bg-slate-50 rounded-[1.5rem] overflow-hidden border border-slate-100 shadow-inner mb-6">
+                <img id="tGraficoRanking" class="w-full h-auto object-contain" style="min-height:180px;" alt="Ranking">
+            </div>
+
+            <!-- Footer branding (idéntico a consulta) -->
+            <div class="flex items-center justify-between bg-blue-50 p-5 rounded-[1.5rem] border border-blue-100">
+                <div>
+                    <p class="text-sm font-black text-slate-700">Únete para análisis diario</p>
+                    <p class="text-lg text-blue-600 font-black">@GENAROCOIN</p>
+                </div>
+                <img src="{{ url_for('static', filename='img/image_15b2b3.png') }}" class="w-20 h-20 rounded-2xl shadow-md border-4 border-white">
+            </div>
+        </div>
+
+        <!-- Botones modal -->
+        <div class="grid grid-cols-2 gap-px bg-slate-200 dark:bg-slate-700 border-t border-slate-200 dark:border-slate-700">
+            <button id="btnCopiarRanking" onclick="copiarTarjetaRanking()" class="bg-blue-600 text-white py-5 font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
+                📋 Copiar Tarjeta
+            </button>
+            <button onclick="document.getElementById('modalRanking').classList.add('hidden')" class="bg-slate-100 dark:bg-slate-800 text-slate-500 py-5 font-black text-xs uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all">
+                Cerrar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     SCRIPTS
+     ============================================================ -->
+<style>
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; }
+
+    .scale-up {
+        animation: scaleUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes scaleUp {
+        from { opacity: 0; transform: scale(0.95); }
+        to   { opacity: 1; transform: scale(1);    }
+    }
+</style>
+
+<script>
+// ── Abre el modal y captura la tarjeta del ranking ────────────
+async function abrirModalRanking(cardId, titulo, rango) {
+    const elemento = document.getElementById(cardId);
+
+    // Fecha
+    const ahora = new Date();
+    const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    document.getElementById('tFecha').textContent = `${ahora.getDate()} ${meses[ahora.getMonth()]} ${ahora.getFullYear()}`;
+
+    // Título y rango
+    document.getElementById('tTituloRanking').textContent  = '🏆 ' + titulo;
+    document.getElementById('tRangoRanking').textContent   = rango;
+
+    // Captura html2canvas de la card completa (mismos parámetros que antes)
+    const canvas = await html2canvas(elemento, {
+        backgroundColor: document.documentElement.classList.contains('dark') ? '#0f172a' : '#ffffff',
+        scale: 2,
+        useCORS: true,
+        borderRadius: 40
+    });
+
+    // Inyecta la imagen capturada en el modal
+    document.getElementById('tGraficoRanking').src = canvas.toDataURL('image/png');
+
+    // Muestra el modal
+    document.getElementById('modalRanking').classList.remove('hidden');
+}
+
+// ── Copiar al portapapeles (mismo patrón que consulta.html) ──
+async function copiarTarjetaRanking() {
+    const area = document.getElementById('areaCaptura');
+    const btn  = document.getElementById('btnCopiarRanking');
+
+    try {
+        btn.innerHTML = '⌛ Procesando...';
+
+        const canvas = await html2canvas(area, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff'
+        });
+
+        canvas.toBlob(async (blob) => {
+            try {
+                const item = new ClipboardItem({ 'image/png': blob });
+                await navigator.clipboard.write([item]);
+                btn.innerHTML = '✅ ¡Copiado!';
+                setTimeout(() => { btn.innerHTML = '📋 Copiar Tarjeta'; }, 2000);
+            } catch {
+                // Fallback: descargar imagen directamente
+                const titulo = document.getElementById('tTituloRanking').textContent.replace(/[^a-zA-Z0-9_]/g, '_');
+                const link   = document.createElement('a');
+                link.download = `Ranking_${titulo}.png`;
+                link.href     = canvas.toDataURL();
+                link.click();
+                btn.innerHTML = '📥 Descargado';
+                setTimeout(() => { btn.innerHTML = '📋 Copiar Tarjeta'; }, 2000);
+            }
+        });
+    } catch (err) {
+        console.error(err);
+        btn.innerHTML = '📋 Copiar Tarjeta';
+    }
+}
+</script>
+{% endblock %}

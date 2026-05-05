@@ -1,0 +1,1059 @@
+{% extends "base.html" %}
+
+{% block title %}Resumen - Control de Inversiones{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Resumen Principal Mejorado -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <div class="text-center">
+                <div class="p-3 bg-blue-100 rounded-lg inline-block mb-4">
+                    <i class="fas fa-money-bill-wave text-blue-600 text-3xl"></i>
+                </div>
+                <h3 class="text-sm font-medium text-gray-500 mb-2">Total Invertido</h3>
+                <p class="text-3xl font-bold text-gray-800">
+                    Bs. {{ "%.2f"|format(resumen.total_invertido) }}
+                </p>
+                <p class="text-xs text-gray-400 mt-1">Capital total comprometido</p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <div class="text-center">
+                <div class="p-3 bg-green-100 rounded-lg inline-block mb-4">
+                    <i class="fas fa-chart-line text-green-600 text-3xl"></i>
+                </div>
+                <h3 class="text-sm font-medium text-gray-500 mb-2">Valor Actual</h3>
+                <p class="text-3xl font-bold text-gray-800">
+                    Bs. {{ "%.2f"|format(resumen.valor_actual) }}
+                </p>
+                <p class="text-xs text-gray-400 mt-1">Valor de mercado actual</p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <div class="text-center">
+                <div class="p-3 {% if resumen.ganancia_perdida >= 0 %}bg-green-100{% else %}bg-red-100{% endif %} rounded-lg inline-block mb-4">
+                    <i class="fas {% if resumen.ganancia_perdida >= 0 %}fa-arrow-up text-green-600{% else %}fa-arrow-down text-red-600{% endif %} text-3xl"></i>
+                </div>
+                <h3 class="text-sm font-medium text-gray-500 mb-2">Ganancia/Pérdida</h3>
+                <p class="text-3xl font-bold {% if resumen.ganancia_perdida >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                    Bs. {{ "%+.2f"|format(resumen.ganancia_perdida) }}
+                </p>
+                <p class="text-xs text-gray-400 mt-1">
+                    {% if resumen.ganancia_perdida >= 0 %}Ganancia real{% else %}Pérdida real{% endif %}
+                </p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <div class="text-center">
+                <div class="p-3 {% if resumen.rendimiento_porcentaje >= 0 %}bg-green-100{% else %}bg-red-100{% endif %} rounded-lg inline-block mb-4">
+                    <i class="fas fa-percentage {% if resumen.rendimiento_porcentaje >= 0 %}text-green-600{% else %}text-red-600{% endif %} text-3xl"></i>
+                </div>
+                <h3 class="text-sm font-medium text-gray-500 mb-2">Rendimiento</h3>
+                <p class="text-3xl font-bold {% if resumen.rendimiento_porcentaje >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                    {{ "%+.2f"|format(resumen.rendimiento_porcentaje) }}%
+                </p>
+                <p class="text-xs text-gray-400 mt-1">Retorno sobre inversión</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas Mejoradas -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800">
+                        <i class="fas fa-boxes text-blue-600 mr-2"></i>
+                        Acciones Totales
+                    </h3>
+                    <p class="text-3xl font-bold text-blue-600 mt-2">
+                        {{ "{:,.0f}".format(resumen.cantidad_acciones) }}
+                    </p>
+                    <p class="text-sm text-gray-500 mt-1">Unidades en portafolio</p>
+                    <div class="mt-2 text-xs text-gray-400">
+                        {% if resumen.cantidad_acciones > 0 %}
+                        {% set promedio = resumen.total_invertido / resumen.cantidad_acciones %}
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Costo promedio: Bs. {{ "%.2f"|format(promedio) }}
+                        {% endif %}
+                    </div>
+                </div>
+                <i class="fas fa-box text-blue-200 text-4xl"></i>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800">
+                        <i class="fas fa-layer-group text-green-600 mr-2"></i>
+                        Diversificación
+                    </h3>
+                    <p class="text-3xl font-bold text-green-600 mt-2">
+                        {{ resumen.acciones_diferentes }}
+                    </p>
+                    <p class="text-sm text-gray-500 mt-1">Empresas diferentes</p>
+                    <div class="mt-2 text-xs text-gray-400">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        {{ resumen.detalle_acciones|length }} tipo{% if resumen.detalle_acciones|length != 1 %}s{% endif %} de acciones
+                    </div>
+                </div>
+                <i class="fas fa-chart-pie text-green-200 text-4xl"></i>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800">
+                        <i class="fas fa-balance-scale text-purple-600 mr-2"></i>
+                        Distribución
+                    </h3>
+                    <p class="text-3xl font-bold text-purple-600 mt-2">
+                        {% if resumen.detalle_acciones|length > 0 %}
+                            {{ (100 / resumen.detalle_acciones|length)|round|int }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </p>
+                    <p class="text-sm text-gray-500 mt-1">Promedio por acción</p>
+                    <div class="mt-2 text-xs text-gray-400">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        {% if resumen.detalle_acciones|length > 0 %}
+                            Inversión diversificada
+                        {% else %}
+                            Sin diversificación
+                        {% endif %}
+                    </div>
+                </div>
+                <i class="fas fa-balance-scale-right text-purple-200 text-4xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detalle por Acción con Selector de Gráficos -->
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800">
+                        <i class="fas fa-chart-pie mr-2"></i>Detalle por Acción
+                    </h3>
+                    <p class="text-sm text-gray-600 mt-1">Resumen de cada inversión con su distribución</p>
+                </div>
+                
+                <!-- Selector de Tipo de Gráfico -->
+                {% if resumen.detalle_acciones %}
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm text-gray-600 mr-2">Vista:</span>
+                    <div class="flex bg-gray-100 rounded-lg p-1">
+                        <button type="button" 
+                                onclick="changeChartType('pie')"
+                                class="px-3 py-1 rounded-md text-sm font-medium transition-all chart-type-btn active"
+                                data-type="pie">
+                            <i class="fas fa-chart-pie mr-1"></i>Circular
+                        </button>
+                        <button type="button" 
+                                onclick="changeChartType('bar')"
+                                class="px-3 py-1 rounded-md text-sm font-medium transition-all chart-type-btn"
+                                data-type="bar">
+                            <i class="fas fa-chart-bar mr-1"></i>Barras
+                        </button>
+                        <button type="button" 
+                                onclick="changeChartType('donut')"
+                                class="px-3 py-1 rounded-md text-sm font-medium transition-all chart-type-btn"
+                                data-type="donut">
+                            <i class="fas fa-chart-pie mr-1"></i>Donut
+                        </button>
+                        <button type="button" 
+                                onclick="changeChartType('horizontal')"
+                                class="px-3 py-1 rounded-md text-sm font-medium transition-all chart-type-btn"
+                                data-type="horizontal">
+                            <i class="fas fa-chart-line mr-1"></i>Horizontal
+                        </button>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if resumen.detalle_acciones %}
+        <div class="p-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Tabla de Detalles -->
+                <div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acción</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inversión</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">G/P</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200">
+                                {% for accion in resumen.detalle_acciones %}
+                                {% set porcentaje_portafolio = (accion.valor_actual / resumen.valor_actual * 100) if resumen.valor_actual > 0 else 0 %}
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-4 py-4">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-10 w-10 rounded-lg overflow-hidden mr-3 bg-white border border-gray-200">
+                                                {% if accion.imagen_url %}
+                                                <img src="{{ accion.imagen_url }}" 
+                                                     alt="{{ accion.simbolo }}" 
+                                                     class="h-full w-full object-contain p-1"
+                                                     onerror="this.src='https://www.bolsadecaracas.com/wp-content/uploads/2020/06/bolsa-de-caracas.png'">
+                                                {% else %}
+                                                <div class="h-full w-full flex items-center justify-center 
+                                                            {% if accion.ganancia >= 0 %}bg-green-100{% else %}bg-red-100{% endif %}">
+                                                    <span class="font-bold 
+                                                        {% if accion.ganancia >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                                                        {{ accion.simbolo[:2] }}
+                                                    </span>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div>
+                                                <div class="font-medium text-gray-900">{{ accion.simbolo }}</div>
+                                                <div class="text-xs text-gray-500">
+                                                    {% if accion.variacion_diaria >= 0 %}
+                                                        <span class="text-green-600">↑ {{ "%.2f"|format(accion.variacion_diaria) }}% hoy</span>
+                                                    {% else %}
+                                                        <span class="text-red-600">↓ {{ "%.2f"|format(accion.variacion_diaria) }}% hoy</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-4 text-sm text-gray-900">
+                                        {{ "{:,.0f}".format(accion.cantidad) }}
+                                    </td>
+                                    <td class="px-4 py-4 text-sm text-gray-900">
+                                        <div>Bs. {{ "%.2f"|format(accion.costo_total) }}</div>
+                                        <div class="text-xs text-gray-400">
+                                            @Bs. {{ "%.2f"|format(accion.precio_promedio_por_accion) }}
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-4 text-sm font-medium text-gray-900">
+                                        <div>Bs. {{ "%.2f"|format(accion.valor_actual) }}</div>
+                                        <div class="text-xs text-gray-400">
+                                            @Bs. {{ "%.2f"|format(accion.precio_actual) }}
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-4">
+                                        <div class="flex flex-col">
+                                            <span class="font-medium {% if accion.ganancia >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                                                {% if accion.ganancia >= 0 %}+{% endif %}Bs. {{ "%.2f"|format(accion.ganancia) }}
+                                            </span>
+                                            <span class="text-xs {% if accion.rendimiento >= 0 %}text-green-500{% else %}text-red-500{% endif %}">
+                                                {% if accion.rendimiento >= 0 %}+{% endif %}{{ "%.2f"|format(accion.rendimiento) }}%
+                                            </span>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Análisis de Rendimiento - AHORA DEBAJO DE LA TABLA -->
+                    <div class="mt-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Mejor Rendimiento -->
+                            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                                <div class="flex items-start">
+                                    <i class="fas fa-trophy text-green-600 mr-3 mt-1 text-xl"></i>
+                                    <div class="flex-1 min-w-0">
+                                        <h5 class="text-sm font-bold text-green-700 mb-2">Mejor Rendimiento</h5>
+                                        {% set mejor = resumen.detalle_acciones|selectattr('rendimiento', 'gt', 0)|sort(attribute='rendimiento', reverse=True)|first %}
+                                        {% if mejor %}
+                                        <div class="space-y-1">
+                                            <div class="flex justify-between items-center">
+                                                <span class="font-bold text-green-800 truncate">{{ mejor.simbolo }}</span>
+                                                <span class="text-lg font-bold text-green-600 whitespace-nowrap ml-2">+{{ "%.2f"|format(mejor.rendimiento) }}%</span>
+                                            </div>
+                                            <div class="text-xs text-green-600">
+                                                <div class="truncate">Ganancia: +Bs. {{ "%.2f"|format(mejor.ganancia) }}</div>
+                                                <div class="truncate">Valor: Bs. {{ "%.2f"|format(mejor.valor_actual) }}</div>
+                                            </div>
+                                        </div>
+                                        {% else %}
+                                        <div class="text-center py-2">
+                                            <p class="text-green-600">Sin ganancias</p>
+                                            <p class="text-xs text-green-500">Todas las inversiones están en pérdida</p>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Peor Rendimiento -->
+                            <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                                <div class="flex items-start">
+                                    <i class="fas fa-chart-line-down text-red-600 mr-3 mt-1 text-xl"></i>
+                                    <div class="flex-1 min-w-0">
+                                        <h5 class="text-sm font-bold text-red-700 mb-2">Peor Rendimiento</h5>
+                                        {% set peor = resumen.detalle_acciones|selectattr('rendimiento', 'lt', 0)|sort(attribute='rendimiento')|first %}
+                                        {% if peor %}
+                                        <div class="space-y-1">
+                                            <div class="flex justify-between items-center">
+                                                <span class="font-bold text-red-800 truncate">{{ peor.simbolo }}</span>
+                                                <span class="text-lg font-bold text-red-600 whitespace-nowrap ml-2">{{ "%.2f"|format(peor.rendimiento) }}%</span>
+                                            </div>
+                                            <div class="text-xs text-red-600">
+                                                <div class="truncate">Pérdida: -Bs. {{ "%.2f"|format(peor.ganancia|abs) }}</div>
+                                                <div class="truncate">Valor: Bs. {{ "%.2f"|format(peor.valor_actual) }}</div>
+                                            </div>
+                                        </div>
+                                        {% else %}
+                                        <div class="text-center py-2">
+                                            <p class="text-red-600">Sin pérdidas</p>
+                                            <p class="text-xs text-red-500">Todas las inversiones están en ganancia</p>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Rendimiento General -->
+                        <div class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div class="flex items-center">
+                                <i class="fas fa-chart-line text-blue-600 mr-3 text-xl"></i>
+                                <div class="flex-1 min-w-0">
+                                    <h5 class="text-sm font-bold text-blue-700 mb-1">Rendimiento General</h5>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-gray-600 truncate">Portafolio completo:</span>
+                                        <span class="text-lg font-bold whitespace-nowrap ml-2 {% if resumen.rendimiento_porcentaje >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                                            {{ "%+.2f"|format(resumen.rendimiento_porcentaje) }}%
+                                        </span>
+                                    </div>
+                                    <div class="mt-1 text-xs text-blue-600 truncate">
+                                        {% if resumen.ganancia_perdida >= 0 %}
+                                            Ganancia total: +Bs. {{ "%.2f"|format(resumen.ganancia_perdida) }}
+                                        {% else %}
+                                            Pérdida total: -Bs. {{ "%.2f"|format(resumen.ganancia_perdida|abs) }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Resumen Total -->
+                    <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm text-gray-500">Total invertido:</p>
+                                <p class="text-lg font-bold text-gray-800">Bs. {{ "%.2f"|format(resumen.total_invertido) }}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Valor actual:</p>
+                                <p class="text-lg font-bold text-gray-800">Bs. {{ "%.2f"|format(resumen.valor_actual) }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Contenedor de Gráficos Múltiples -->
+                <div>
+                    <div class="bg-gray-50 rounded-lg p-6 h-full">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-lg font-bold text-gray-800">
+                                <i class="fas fa-chart-pie mr-2"></i><span id="chart-title">Distribución Circular</span>
+                            </h4>
+                            <div id="chart-legend" class="flex flex-wrap gap-2"></div>
+                        </div>
+                        
+                        <!-- Área del Gráfico -->
+                        <div id="chart-container" class="mb-6 relative min-h-[300px]">
+                            <!-- Gráfico se cargará aquí dinámicamente -->
+                            <svg width="300" height="300" viewBox="0 0 42 42" class="mx-auto" id="initial-chart">
+                                <!-- El gráfico se renderizará aquí con JavaScript -->
+                            </svg>
+                        </div>
+                        
+                        <!-- Información del Gráfico -->
+                        <div id="chart-info" class="text-center text-gray-600 text-sm mb-4">
+                            <p>Haz clic en cualquier segmento para ver detalles</p>
+                        </div>
+                        
+                        <!-- Detalles de la Acción Seleccionada -->
+                        <div id="selected-details" class="hidden bg-white rounded-lg p-4 border border-gray-200 mb-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <h5 class="font-bold text-gray-800" id="selected-symbol"></h5>
+                                <button onclick="clearSelection()" class="text-gray-400 hover:text-gray-600">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3 text-sm">
+                                <div>
+                                    <span class="text-gray-500">Porcentaje:</span>
+                                    <span id="selected-percentage" class="font-bold ml-2"></span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">Valor actual:</span>
+                                    <span id="selected-value" class="font-bold ml-2"></span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">Inversión:</span>
+                                    <span id="selected-investment" class="ml-2"></span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">Ganancia/Pérdida:</span>
+                                    <span id="selected-gain" class="font-bold ml-2"></span>
+                                </div>
+                                <div class="col-span-2">
+                                    <span class="text-gray-500">Rendimiento:</span>
+                                    <span id="selected-return" class="ml-2"></span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Leyenda de Colores -->
+                        <div id="color-legend" class="space-y-2">
+                            {% for accion in resumen.detalle_acciones %}
+                            <div class="flex items-center justify-between p-2 rounded hover:bg-gray-100 transition-colors cursor-pointer"
+                                 onclick="selectAction('{{ accion.simbolo }}')">
+                                <div class="flex items-center">
+                                    <div class="w-4 h-4 rounded-full mr-3 chart-color" 
+                                         style="background-color: var(--color-{{ loop.index0 }})"></div>
+                                    <div>
+                                        <span class="text-sm font-medium text-gray-700">{{ accion.simbolo }}</span>
+                                        <div class="text-xs text-gray-500">
+                                            {% set porcentaje = (accion.valor_actual / resumen.valor_actual * 100) if resumen.valor_actual > 0 else 0 %}
+                                            {{ "%.1f"|format(porcentaje) }}% • {{ accion.cantidad }} unidad{% if accion.cantidad != 1 %}es{% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-sm font-bold text-gray-800">Bs. {{ "%.2f"|format(accion.valor_actual) }}</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-sm text-gray-500">
+                        {{ resumen.acciones_diferentes }} acción{% if resumen.acciones_diferentes != 1 %}es{% endif %} diferentes • 
+                        {{ "{:,.0f}".format(resumen.cantidad_acciones) }} unidades totales
+                    </p>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm font-medium text-gray-700">
+                        Ganancia total: 
+                        <span class="font-bold {% if resumen.ganancia_perdida >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                            Bs. {{ "%+.2f"|format(resumen.ganancia_perdida) }}
+                        </span>
+                    </p>
+                </div>
+            </div>
+            <div class="text-xs text-gray-400 text-center mt-2">
+                <i class="fas fa-info-circle mr-1"></i>
+                Datos actualizados: {{ now().strftime('%d/%m/%Y %H:%M') }}
+            </div>
+        </div>
+        
+        {% else %}
+        <div class="p-12 text-center">
+            <i class="fas fa-inbox text-5xl text-gray-300 mb-4"></i>
+            <p class="text-lg text-gray-500">No hay inversiones registradas</p>
+            <p class="text-gray-400 mb-6">Comienza agregando tu primera inversión para ver el análisis detallado</p>
+            <a href="{{ url_for('agregar_accion') }}" 
+               class="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-bold inline-flex items-center">
+                <i class="fas fa-plus mr-2"></i>Agregar Primera Inversión
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Datos del portafolio
+const portfolioData = {
+    acciones: [
+        {% for accion in resumen.detalle_acciones %}
+        {
+            simbolo: "{{ accion.simbolo }}",
+            cantidad: {{ accion.cantidad }},
+            costo_total: {{ accion.costo_total }},
+            valor_actual: {{ accion.valor_actual }},
+            ganancia: {{ accion.ganancia }},
+            rendimiento: {{ accion.rendimiento }},
+            precio_promedio: {{ accion.precio_promedio_por_accion }},
+            precio_actual: {{ accion.precio_actual }},
+            porcentaje: {{ (accion.valor_actual / resumen.valor_actual * 100) if resumen.valor_actual > 0 else 0 }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ],
+    total_invertido: {{ resumen.total_invertido }},
+    valor_actual: {{ resumen.valor_actual }},
+    ganancia_perdida: {{ resumen.ganancia_perdida }},
+    rendimiento_porcentaje: {{ resumen.rendimiento_porcentaje }},
+    acciones_diferentes: {{ resumen.acciones_diferentes }}
+};
+
+// Paleta de colores
+const colors = [
+    '#3B82F6', '#10B981', '#F59E0B', '#EF4444', 
+    '#8B5CF6', '#EC4899', '#14B8A6', '#F97316',
+    '#6366F1', '#84CC16', '#F43F5E', '#06B6D4'
+];
+
+// Variable global para el tipo de gráfico actual
+let currentChartType = 'pie';
+let selectedAction = null;
+
+// Inicializar variables CSS para colores
+function initializeColors() {
+    const style = document.createElement('style');
+    colors.forEach((color, index) => {
+        style.textContent += `:root { --color-${index}: ${color}; }`;
+    });
+    document.head.appendChild(style);
+}
+
+// Cambiar tipo de gráfico
+function changeChartType(type) {
+    currentChartType = type;
+    
+    // Actualizar botones activos
+    document.querySelectorAll('.chart-type-btn').forEach(btn => {
+        btn.classList.remove('active', 'bg-white', 'shadow-sm');
+        if (btn.dataset.type === type) {
+            btn.classList.add('active', 'bg-white', 'shadow-sm');
+        }
+    });
+    
+    // Actualizar título
+    const titles = {
+        'pie': 'Distribución Circular',
+        'donut': 'Gráfico Donut',
+        'bar': 'Gráfico de Barras',
+        'horizontal': 'Barras Horizontales'
+    };
+    document.getElementById('chart-title').textContent = titles[type];
+    
+    // Renderizar nuevo gráfico
+    renderChart(type);
+    
+    // Guardar preferencia
+    localStorage.setItem('chartPreference', type);
+}
+
+// Renderizar gráfico
+function renderChart(type) {
+    const container = document.getElementById('chart-container');
+    
+    // Limpiar contenedor
+    container.innerHTML = '';
+    
+    // Renderizar gráfico específico
+    switch(type) {
+        case 'pie':
+            renderPieChart(container);
+            break;
+        case 'donut':
+            renderDonutChart(container);
+            break;
+        case 'bar':
+            renderBarChart(container);
+            break;
+        case 'horizontal':
+            renderHorizontalBarChart(container);
+            break;
+    }
+    
+    // Actualizar leyenda
+    updateChartLegend();
+}
+
+// Renderizar gráfico circular
+function renderPieChart(container) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '300');
+    svg.setAttribute('height', '300');
+    svg.setAttribute('viewBox', '0 0 42 42');
+    svg.setAttribute('class', 'mx-auto');
+    
+    const chartGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    chartGroup.setAttribute('class', 'chart-group');
+    
+    const radius = 15.9155;
+    const circumference = 2 * Math.PI * radius;
+    
+    let accumulatedAngle = 0;
+    
+    portfolioData.acciones.forEach((accion, index) => {
+        const percentage = accion.porcentaje;
+        const angle = (percentage / 100) * 360;
+        const dashArray = (percentage / 100) * circumference;
+        
+        const segment = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        segment.setAttribute('cx', '21');
+        segment.setAttribute('cy', '21');
+        segment.setAttribute('r', radius.toString());
+        segment.setAttribute('fill', 'transparent');
+        segment.setAttribute('stroke', colors[index % colors.length]);
+        segment.setAttribute('stroke-width', '5');
+        segment.setAttribute('stroke-dasharray', `${dashArray} ${circumference}`);
+        segment.setAttribute('stroke-dashoffset', -(accumulatedAngle / 360) * circumference);
+        segment.setAttribute('class', 'chart-segment transition-all duration-300 cursor-pointer');
+        segment.setAttribute('data-index', index);
+        segment.setAttribute('data-symbol', accion.simbolo);
+        
+        segment.addEventListener('click', () => selectAction(accion.simbolo));
+        segment.addEventListener('mouseover', (e) => highlightSegment(e.target));
+        segment.addEventListener('mouseout', unhighlightSegments);
+        
+        chartGroup.appendChild(segment);
+        accumulatedAngle += angle;
+    });
+    
+    // Círculo interior
+    const innerCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    innerCircle.setAttribute('cx', '21');
+    innerCircle.setAttribute('cy', '21');
+    innerCircle.setAttribute('r', '15');
+    innerCircle.setAttribute('fill', '#F9FAFB');
+    
+    // Texto central - SOLO EL NÚMERO
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', '21');
+    text.setAttribute('y', '21');
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dy', '.3em');
+    text.setAttribute('class', 'text-2xl font-bold fill-gray-700');
+    text.textContent = portfolioData.acciones_diferentes;
+    
+    svg.appendChild(chartGroup);
+    svg.appendChild(innerCircle);
+    svg.appendChild(text);
+    container.appendChild(svg);
+}
+
+// Renderizar gráfico donut
+function renderDonutChart(container) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '300');
+    svg.setAttribute('height', '300');
+    svg.setAttribute('viewBox', '0 0 42 42');
+    svg.setAttribute('class', 'mx-auto');
+    
+    const chartGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    chartGroup.setAttribute('class', 'chart-group');
+    
+    const radius = 15.9155;
+    const circumference = 2 * Math.PI * radius;
+    
+    let accumulatedAngle = 0;
+    
+    portfolioData.acciones.forEach((accion, index) => {
+        const percentage = accion.porcentaje;
+        const angle = (percentage / 100) * 360;
+        const dashArray = (percentage / 100) * circumference;
+        
+        const segment = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        segment.setAttribute('cx', '21');
+        segment.setAttribute('cy', '21');
+        segment.setAttribute('r', radius.toString());
+        segment.setAttribute('fill', 'transparent');
+        segment.setAttribute('stroke', colors[index % colors.length]);
+        segment.setAttribute('stroke-width', '8');
+        segment.setAttribute('stroke-dasharray', `${dashArray} ${circumference}`);
+        segment.setAttribute('stroke-dashoffset', -(accumulatedAngle / 360) * circumference);
+        segment.setAttribute('class', 'chart-segment transition-all duration-300 cursor-pointer');
+        segment.setAttribute('data-index', index);
+        segment.setAttribute('data-symbol', accion.simbolo);
+        
+        segment.addEventListener('click', () => selectAction(accion.simbolo));
+        segment.addEventListener('mouseover', (e) => highlightSegment(e.target));
+        segment.addEventListener('mouseout', unhighlightSegments);
+        
+        chartGroup.appendChild(segment);
+        accumulatedAngle += angle;
+    });
+    
+    // Círculo interior más pequeño para efecto donut
+    const innerCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    innerCircle.setAttribute('cx', '21');
+    innerCircle.setAttribute('cy', '21');
+    innerCircle.setAttribute('r', '8');
+    innerCircle.setAttribute('fill', '#F9FAFB');
+    
+    // Texto central - SOLO EL NÚMERO
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', '21');
+    text.setAttribute('y', '21');
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dy', '.3em');
+    text.setAttribute('class', 'text-2xl font-bold fill-gray-700');
+    text.textContent = portfolioData.acciones_diferentes;
+    
+    svg.appendChild(chartGroup);
+    svg.appendChild(innerCircle);
+    svg.appendChild(text);
+    container.appendChild(svg);
+}
+
+// Renderizar gráfico de barras verticales
+function renderBarChart(container) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'relative h-64';
+    
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '100%');
+    svg.setAttribute('height', '100%');
+    svg.setAttribute('class', 'overflow-visible');
+    
+    const chartGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    chartGroup.setAttribute('class', 'chart-group');
+    
+    const width = 280;
+    const height = 200;
+    const barWidth = 40;
+    const spacing = 20;
+    const maxValue = Math.max(...portfolioData.acciones.map(a => a.porcentaje));
+    const scale = 150 / maxValue;
+    
+    // Eje X
+    const axis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    axis.setAttribute('x1', '20');
+    axis.setAttribute('y1', '180');
+    axis.setAttribute('x2', width.toString());
+    axis.setAttribute('y2', '180');
+    axis.setAttribute('stroke', '#D1D5DB');
+    axis.setAttribute('stroke-width', '2');
+    chartGroup.appendChild(axis);
+    
+    portfolioData.acciones.forEach((accion, index) => {
+        const x = 40 + index * (barWidth + spacing);
+        const barHeight = accion.porcentaje * scale;
+        const y = 180 - barHeight;
+        
+        // Barra
+        const bar = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        bar.setAttribute('x', x.toString());
+        bar.setAttribute('y', y.toString());
+        bar.setAttribute('width', barWidth.toString());
+        bar.setAttribute('height', barHeight.toString());
+        bar.setAttribute('fill', colors[index % colors.length]);
+        bar.setAttribute('class', 'chart-bar transition-all duration-300 cursor-pointer hover:opacity-80');
+        bar.setAttribute('rx', '4');
+        bar.setAttribute('ry', '4');
+        bar.setAttribute('data-index', index);
+        bar.setAttribute('data-symbol', accion.simbolo);
+        
+        bar.addEventListener('click', () => selectAction(accion.simbolo));
+        bar.addEventListener('mouseover', (e) => highlightBar(e.target));
+        bar.addEventListener('mouseout', unhighlightBars);
+        
+        chartGroup.appendChild(bar);
+        
+        // Etiqueta del símbolo
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', (x + barWidth / 2).toString());
+        label.setAttribute('y', '195');
+        label.setAttribute('text-anchor', 'middle');
+        label.setAttribute('class', 'text-xs fill-gray-600');
+        label.textContent = accion.simbolo;
+        chartGroup.appendChild(label);
+        
+        // Valor porcentual
+        const value = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        value.setAttribute('x', (x + barWidth / 2).toString());
+        value.setAttribute('y', (y - 5).toString());
+        value.setAttribute('text-anchor', 'middle');
+        value.setAttribute('class', 'text-xs font-bold fill-gray-700');
+        value.textContent = accion.porcentaje.toFixed(1) + '%';
+        chartGroup.appendChild(value);
+    });
+    
+    svg.appendChild(chartGroup);
+    wrapper.appendChild(svg);
+    container.appendChild(wrapper);
+}
+
+// Renderizar gráfico de barras horizontales
+function renderHorizontalBarChart(container) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'relative h-64';
+    
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '100%');
+    svg.setAttribute('height', '100%');
+    svg.setAttribute('class', 'overflow-visible');
+    
+    const chartGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    chartGroup.setAttribute('class', 'chart-group');
+    
+    const width = 280;
+    const height = 200;
+    const barHeight = 20;
+    const spacing = 30;
+    const maxValue = Math.max(...portfolioData.acciones.map(a => a.porcentaje));
+    const scale = 250 / maxValue;
+    
+    portfolioData.acciones.forEach((accion, index) => {
+        const y = 20 + index * (barHeight + spacing);
+        const barWidth = accion.porcentaje * scale;
+        
+        // Barra
+        const bar = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        bar.setAttribute('x', '20');
+        bar.setAttribute('y', y.toString());
+        bar.setAttribute('width', barWidth.toString());
+        bar.setAttribute('height', barHeight.toString());
+        bar.setAttribute('fill', colors[index % colors.length]);
+        bar.setAttribute('class', 'chart-bar transition-all duration-300 cursor-pointer hover:opacity-80');
+        bar.setAttribute('rx', '4');
+        bar.setAttribute('ry', '4');
+        bar.setAttribute('data-index', index);
+        bar.setAttribute('data-symbol', accion.simbolo);
+        
+        bar.addEventListener('click', () => selectAction(accion.simbolo));
+        bar.addEventListener('mouseover', (e) => highlightBar(e.target));
+        bar.addEventListener('mouseout', unhighlightBars);
+        
+        chartGroup.appendChild(bar);
+        
+        // Etiqueta del símbolo
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', '15');
+        label.setAttribute('y', (y + barHeight / 2 + 4).toString());
+        label.setAttribute('text-anchor', 'end');
+        label.setAttribute('class', 'text-xs fill-gray-600');
+        label.textContent = accion.simbolo;
+        chartGroup.appendChild(label);
+        
+        // Valor porcentual
+        const value = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        value.setAttribute('x', (barWidth + 25).toString());
+        value.setAttribute('y', (y + barHeight / 2 + 4).toString());
+        value.setAttribute('text-anchor', 'start');
+        value.setAttribute('class', 'text-xs font-bold fill-gray-700');
+        value.textContent = accion.porcentaje.toFixed(1) + '%';
+        chartGroup.appendChild(value);
+    });
+    
+    svg.appendChild(chartGroup);
+    wrapper.appendChild(svg);
+    container.appendChild(wrapper);
+}
+
+// Actualizar leyenda del gráfico
+function updateChartLegend() {
+    const legendContainer = document.getElementById('chart-legend');
+    if (!legendContainer) return;
+    
+    legendContainer.innerHTML = '';
+    
+    portfolioData.acciones.forEach((accion, index) => {
+        const legendItem = document.createElement('div');
+        legendItem.className = 'flex items-center';
+        legendItem.innerHTML = `
+            <div class="w-3 h-3 rounded-full mr-1" style="background-color: ${colors[index % colors.length]}"></div>
+            <span class="text-xs text-gray-600">${accion.simbolo}</span>
+        `;
+        legendContainer.appendChild(legendItem);
+    });
+}
+
+// Seleccionar una acción
+function selectAction(symbol) {
+    const accion = portfolioData.acciones.find(a => a.simbolo === symbol);
+    if (!accion) return;
+    
+    selectedAction = accion;
+    
+    // Actualizar detalles
+    document.getElementById('selected-symbol').textContent = accion.simbolo;
+    document.getElementById('selected-percentage').textContent = accion.porcentaje.toFixed(1) + '%';
+    document.getElementById('selected-value').textContent = 'Bs. ' + accion.valor_actual.toFixed(2);
+    document.getElementById('selected-investment').textContent = 'Bs. ' + accion.costo_total.toFixed(2);
+    
+    const gainElement = document.getElementById('selected-gain');
+    gainElement.textContent = (accion.ganancia >= 0 ? '+Bs. ' : 'Bs. ') + accion.ganancia.toFixed(2);
+    gainElement.className = 'font-bold ml-2 ' + (accion.ganancia >= 0 ? 'text-green-600' : 'text-red-600');
+    
+    const returnElement = document.getElementById('selected-return');
+    returnElement.textContent = (accion.rendimiento >= 0 ? '+' : '') + accion.rendimiento.toFixed(2) + '%';
+    returnElement.className = 'ml-2 ' + (accion.rendimiento >= 0 ? 'text-green-600' : 'text-red-600');
+    
+    // Mostrar detalles
+    document.getElementById('selected-details').classList.remove('hidden');
+    
+    // Resaltar en el gráfico
+    highlightSelected(symbol);
+}
+
+// Limpiar selección
+function clearSelection() {
+    selectedAction = null;
+    document.getElementById('selected-details').classList.add('hidden');
+    unhighlightAll();
+}
+
+// Resaltar segmento seleccionado
+function highlightSelected(symbol) {
+    unhighlightAll();
+    
+    // Resaltar en gráfico
+    if (currentChartType === 'pie' || currentChartType === 'donut') {
+        document.querySelectorAll('.chart-segment').forEach(segment => {
+            if (segment.dataset.symbol === symbol) {
+                segment.style.strokeWidth = '8';
+                segment.style.filter = 'brightness(1.2)';
+            }
+        });
+    } else {
+        document.querySelectorAll('.chart-bar').forEach(bar => {
+            if (bar.dataset.symbol === symbol) {
+                bar.style.filter = 'brightness(1.2)';
+                bar.style.stroke = '#000';
+                bar.style.strokeWidth = '1';
+            }
+        });
+    }
+    
+    // Resaltar en leyenda
+    document.querySelectorAll('#color-legend > div').forEach(item => {
+        if (item.textContent.includes(symbol)) {
+            item.classList.add('bg-gray-100', 'border', 'border-gray-300');
+        }
+    });
+}
+
+// Funciones de resaltado
+function highlightSegment(element) {
+    if (!selectedAction || selectedAction.simbolo !== element.dataset.symbol) {
+        element.style.strokeWidth = '7';
+        element.style.filter = 'brightness(1.1)';
+    }
+}
+
+function highlightBar(element) {
+    if (!selectedAction || selectedAction.simbolo !== element.dataset.symbol) {
+        element.style.filter = 'brightness(1.1)';
+        element.style.stroke = '#374151';
+        element.style.strokeWidth = '1';
+    }
+}
+
+function unhighlightSegments() {
+    if (!selectedAction) {
+        document.querySelectorAll('.chart-segment').forEach(segment => {
+            segment.style.strokeWidth = '5';
+            segment.style.filter = 'none';
+        });
+    } else {
+        highlightSelected(selectedAction.simbolo);
+    }
+}
+
+function unhighlightBars() {
+    if (!selectedAction) {
+        document.querySelectorAll('.chart-bar').forEach(bar => {
+            bar.style.filter = 'none';
+            bar.style.stroke = 'none';
+            bar.style.strokeWidth = '0';
+        });
+    } else {
+        highlightSelected(selectedAction.simbolo);
+    }
+}
+
+function unhighlightAll() {
+    document.querySelectorAll('.chart-segment').forEach(segment => {
+        segment.style.strokeWidth = '5';
+        segment.style.filter = 'none';
+    });
+    
+    document.querySelectorAll('.chart-bar').forEach(bar => {
+        bar.style.filter = 'none';
+        bar.style.stroke = 'none';
+        bar.style.strokeWidth = '0';
+    });
+    
+    document.querySelectorAll('#color-legend > div').forEach(item => {
+        item.classList.remove('bg-gray-100', 'border', 'border-gray-300');
+    });
+}
+
+// Inicializar
+document.addEventListener('DOMContentLoaded', function() {
+    initializeColors();
+    
+    // Cargar preferencia guardada o usar 'pie' por defecto
+    const savedChartType = localStorage.getItem('chartPreference') || 'pie';
+    changeChartType(savedChartType);
+    
+    // Inicializar gráfico
+    renderChart(savedChartType);
+});
+</script>
+
+<style>
+.chart-type-btn {
+    color: #6B7280;
+    transition: all 0.2s;
+}
+
+.chart-type-btn.active {
+    color: #4F46E5;
+    background-color: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.chart-segment {
+    transition: stroke-width 0.2s, filter 0.2s;
+}
+
+.chart-bar {
+    transition: filter 0.2s, stroke 0.2s;
+}
+
+#color-legend > div:hover {
+    background-color: #F9FAFB;
+}
+
+.fill-gray-700 {
+    fill: #374151;
+}
+
+.fill-gray-600 {
+    fill: #4B5563;
+}
+
+.truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.whitespace-nowrap {
+    white-space: nowrap;
+}
+
+.min-w-0 {
+    min-width: 0;
+}
+
+.text-2xl {
+    font-size: 1.5rem;
+    line-height: 2rem;
+}
+</style>
+{% endblock %}
