@@ -29,25 +29,14 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; }
-        /* Estilo para el menú móvil */
+        /* Transición para el menú móvil */
         @media (max-width: 767px) {
             .mobile-menu-open {
-                max-height: calc(100vh - 4rem);
-                overflow-y: auto;
-                transition: max-height 0.3s ease-out;
+                display: block !important;
             }
             .mobile-menu-closed {
-                max-height: 0;
-                overflow: hidden;
-                transition: max-height 0.2s ease-in;
+                display: none !important;
             }
-        }
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
         }
     </style>
 </head>
@@ -62,9 +51,40 @@
                         <span class="bg-blue-600 text-white px-2 py-1 rounded-lg not-italic">GENAROCOIN</span>
                         <span>BVC</span>
                     </a>
+                    
+                    <!-- Menú de escritorio (visible en md y superiores) -->
+                    <div class="hidden md:flex items-center gap-6 text-xs font-bold uppercase tracking-wider">
+                        <a href="/" class="hover:text-blue-600 transition-colors">Mercado</a>
+
+                        {% if is_admin or 'ver_rankings' in user_permisos %}
+                        <a href="/rankings" class="hover:text-blue-600 transition-colors">Rankings</a>
+                        {% endif %}
+
+                        {% if is_admin or 'ver_rankings_fechas' in user_permisos %}
+                        <a href="/rankings-fechas" class="hover:text-blue-600 transition-colors">Rankings Fechas</a>
+                        {% endif %}
+
+                        {% if is_admin or 'ver_consulta' in user_permisos %}
+                        <a href="/consulta" class="hover:text-blue-600 transition-colors">Análisis</a>
+                        {% endif %}
+
+                        {% if is_admin or 'ver_prediccion' in user_permisos %}
+                        <a href="/analisis-avanzado" class="hover:text-purple-500 transition-colors flex items-center gap-1">
+                            <i class="fa-solid fa-brain text-purple-500 text-[10px]"></i> Predicción
+                        </a>
+                        {% endif %}
+
+                        {% if is_admin or 'ver_indices' in user_permisos %}
+                        <a href="/indices" class="hover:text-blue-600 transition-colors">Índices</a>
+                        {% endif %}
+
+                        {% if is_admin or 'ver_portafolio' in user_permisos %}
+                        <a href="/portafolio" class="hover:text-blue-600 transition-colors">Portafolio</a>
+                        {% endif %}
+                    </div>
                 </div>
 
-                <!-- Botones de la derecha (tema, login, etc.) en desktop/mobile -->
+                <!-- Botones de la derecha (tema, login, etc.) -->
                 <div class="flex items-center gap-4">
                     <button id="theme-toggle" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-700 hover:scale-110 transition-transform">
                         <span id="theme-toggle-dark-icon" class="hidden">🌙</span>
@@ -76,7 +96,7 @@
                         <i class="fas fa-bars text-slate-800 dark:text-white text-xl"></i>
                     </button>
 
-                    <!-- Botones que siempre se ven en desktop (y en móvil se ocultan dentro del menú) -->
+                    <!-- Botones de sesión (siempre visibles en desktop, dentro del menú hamburguesa en móvil) -->
                     <div class="hidden md:flex items-center gap-4">
                         {% if not is_admin and not is_user %}
                         <a href="/registro" class="px-4 py-2 bg-green-600 text-white rounded-xl text-[10px] font-black uppercase hover:bg-green-700">
@@ -105,23 +125,22 @@
                 </div>
             </div>
 
-            <!-- Menú desplegable móvil (se muestra/oculta con JavaScript) -->
+            <!-- Menú desplegable móvil (inicialmente oculto) -->
             <div id="mobile-menu" class="md:hidden mobile-menu-closed bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm rounded-b-2xl border-t border-slate-200 dark:border-slate-700 shadow-lg">
                 <div class="flex flex-col py-4 space-y-3 px-3 text-sm font-bold uppercase tracking-wider">
-                    <!-- Enlaces públicos -->
+                    <!-- Todos los enlaces (igual que el menú escritorio) -->
                     <a href="/" class="hover:text-blue-600 transition-colors py-2 px-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700">📊 Mercado</a>
 
-                    <!-- Enlaces con permisos -->
                     {% if is_admin or 'ver_rankings' in user_permisos %}
                     <a href="/rankings" class="hover:text-blue-600 transition-colors py-2 px-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700">🏆 Rankings</a>
                     {% endif %}
 
                     {% if is_admin or 'ver_rankings_fechas' in user_permisos %}
-                    <a href="/rankings-fechas" class="hover:text-blue-600 transition-colors py-2 px-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700">📅 Rankings por Fechas</a>
+                    <a href="/rankings-fechas" class="hover:text-blue-600 transition-colors py-2 px-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700">📅 Rankings Fechas</a>
                     {% endif %}
 
                     {% if is_admin or 'ver_consulta' in user_permisos %}
-                    <a href="/consulta" class="hover:text-blue-600 transition-colors py-2 px-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700">📈 Análisis Técnico</a>
+                    <a href="/consulta" class="hover:text-blue-600 transition-colors py-2 px-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700">📈 Análisis</a>
                     {% endif %}
 
                     {% if is_admin or 'ver_prediccion' in user_permisos %}
@@ -138,10 +157,9 @@
                     <a href="/portafolio" class="hover:text-blue-600 transition-colors py-2 px-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700">💼 Portafolio</a>
                     {% endif %}
 
-                    <!-- Separador -->
                     <div class="border-t border-slate-200 dark:border-slate-700 my-2"></div>
 
-                    <!-- Acciones según estado de usuario -->
+                    <!-- Opciones de sesión en móvil -->
                     {% if not is_admin and not is_user %}
                     <a href="/registro" class="bg-green-600 text-white text-center py-3 rounded-xl hover:bg-green-700 transition">📝 Registrarse</a>
                     <a href="/login" class="bg-slate-800 dark:bg-white text-white dark:text-slate-900 text-center py-3 rounded-xl hover:opacity-90 transition">🔐 Acceder</a>
@@ -178,7 +196,7 @@
     </footer>
 
     <script>
-        // Toggle tema oscuro/claro
+        // Tema oscuro/claro
         const themeToggleBtn = document.getElementById('theme-toggle');
         const darkIcon = document.getElementById('theme-toggle-dark-icon');
         const lightIcon = document.getElementById('theme-toggle-light-icon');
@@ -221,7 +239,7 @@
             });
         }
 
-        // Cerrar menú al hacer clic en un enlace (opcional)
+        // Cerrar menú al hacer clic en un enlace (mejor experiencia)
         document.querySelectorAll('#mobile-menu a').forEach(link => {
             link.addEventListener('click', () => {
                 mobileMenu.classList.remove('mobile-menu-open');
